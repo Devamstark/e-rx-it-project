@@ -1,6 +1,8 @@
+
 import React from 'react';
-import { LogOut, ShieldCheck } from 'lucide-react';
+import { LogOut, ShieldCheck, Database, Wifi, WifiOff } from 'lucide-react';
 import { User } from '../../types';
+import { dbService } from '../../services/db';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -9,6 +11,8 @@ interface LayoutProps {
 }
 
 export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
+  const isCloud = dbService.isCloudEnabled();
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
       {/* Header */}
@@ -48,8 +52,18 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
 
       {/* Footer */}
       <footer className="bg-slate-900 text-slate-400 py-6 mt-auto">
-        <div className="max-w-7xl mx-auto px-4 text-center text-sm">
+        <div className="max-w-7xl mx-auto px-4 text-center text-sm space-y-2">
           <p>&copy; {new Date().getFullYear()} E-rx by DevXWorld. Compliant with India Telemedicine Practice Guidelines 2020 & DPDP Act 2023.</p>
+          
+          <div className="flex justify-center items-center gap-2 text-xs opacity-70">
+              <Database className="w-3 h-3" />
+              <span>Data Source:</span>
+              {isCloud ? (
+                  <span className="text-green-400 flex items-center font-bold"><Wifi className="w-3 h-3 mr-1"/> Cloud Database Connected</span>
+              ) : (
+                  <span className="text-amber-400 flex items-center font-bold"><WifiOff className="w-3 h-3 mr-1"/> Local Device Only</span>
+              )}
+          </div>
         </div>
       </footer>
     </div>

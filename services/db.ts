@@ -1,3 +1,4 @@
+
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { User, Prescription, UserRole, VerificationStatus } from '../types';
 
@@ -14,46 +15,47 @@ const INITIAL_USERS: User[] = [
   }
 ];
 
-// --- Config ---
-// Safely retrieve environment variables to prevent crashes in environments where import.meta.env is undefined
+// --- Credentials ---
+// 1. Environment Variables (Best Practice)
+// 2. Local Storage Overrides (Manual Entry via UI)
+// 3. Hardcoded Fallback (For immediate user convenience based on provided key)
+
+const FALLBACK_URL = 'https://xqhvjabpsiimxjpbhbih.supabase.co';
+const FALLBACK_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhxaHZqYWJwc2lpbXhqcGJoYmloIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2MzM3MTcsImV4cCI6MjA3OTIwOTcxN30._IUN318q5XbhV-VU8RAPTSuWh2NLqK2GK0P_Qzg9GuQ';
+
 const getEnv = (key: string) => {
     try {
-        // Check import.meta.env (Vite standard)
-        // We check if 'env' exists on import.meta before accessing the key
         const meta = import.meta as any;
-        if (meta && meta.env && meta.env[key]) {
-            return meta.env[key];
-        }
-    } catch (e) {
-        // Ignore errors accessing import.meta
-    }
-
+        if (meta && meta.env && meta.env[key]) return meta.env[key];
+    } catch (e) {}
     try {
-        // Check process.env (Node/CRA/Webpack standard)
-        if (typeof process !== 'undefined' && process.env && process.env[key]) {
-            return process.env[key];
-        }
-    } catch (e) {
-        // Ignore errors accessing process
-    }
-    
+        if (typeof process !== 'undefined' && process.env && process.env[key]) return process.env[key];
+    } catch (e) {}
     return undefined;
 };
 
-const SUPABASE_URL = getEnv('VITE_SUPABASE_URL');
-const SUPABASE_KEY = getEnv('VITE_SUPABASE_ANON_KEY');
+const getStoredConfig = () => {
+    const url = localStorage.getItem('devx_db_url');
+    const key = localStorage.getItem('devx_db_key');
+    if (url && key) return { url, key };
+    return null;
+};
+
+const stored = getStoredConfig();
+const SUPABASE_URL = getEnv('VITE_SUPABASE_URL') || stored?.url || FALLBACK_URL;
+const SUPABASE_KEY = getEnv('VITE_SUPABASE_ANON_KEY') || stored?.key || FALLBACK_KEY;
 
 let supabase: SupabaseClient | null = null;
 
 if (SUPABASE_URL && SUPABASE_KEY) {
     try {
         supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-        console.log("DevXWorld: Connected to Cloud Database");
+        console.log("DevXWorld: Connected to Cloud Database", SUPABASE_URL);
     } catch (e) {
         console.warn("DevXWorld: Failed to initialize Supabase client", e);
     }
 } else {
-    console.log("DevXWorld: Running in Local Storage Mode (Add VITE_SUPABASE_URL to enable cloud)");
+    console.log("DevXWorld: Running in Local Storage Mode");
 }
 
 // --- Helper: Local Storage ---
@@ -72,6 +74,20 @@ const local = {
 
 // --- DB Service API ---
 export const dbService = {
+    isCloudEnabled: () => !!supabase,
+    
+    configureCloud: (url: string, key: string) => {
+        localStorage.setItem('devx_db_url', url);
+        localStorage.setItem('devx_db_key', key);
+        window.location.reload();
+    },
+
+    disconnectCloud: () => {
+        localStorage.removeItem('devx_db_url');
+        localStorage.removeItem('devx_db_key');
+        window.location.reload();
+    },
+
     async loadData(): Promise<{ users: User[], rx: Prescription[] }> {
         if (!supabase) {
             return { users: local.getUsers(), rx: local.getRx() };
@@ -86,7 +102,7 @@ export const dbService = {
                 .single();
 
             // Load Prescriptions
-            const { data: rxData, error: rxError } = await supabase
+            const { data: rxData } = await supabase
                 .from('prescriptions')
                 .select('data')
                 .eq('id', 'global_prescriptions')

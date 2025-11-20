@@ -30,6 +30,11 @@ export enum AdminPermission {
   MANAGE_ADMIN_ACCOUNTS = 'MANAGE_ADMIN_ACCOUNTS'
 }
 
+export interface DbConfig {
+    url: string;
+    key: string;
+}
+
 export interface User {
   id: string;
   name: string;
