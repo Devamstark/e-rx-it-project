@@ -5,70 +5,61 @@ import { DoctorDashboard } from './components/doctor/DoctorDashboard';
 import { PharmacyDashboard } from './components/pharmacy/PharmacyDashboard';
 import { AdminDashboard } from './components/admin/AdminDashboard';
 import { User, UserRole, VerificationStatus, DoctorProfile, Prescription } from './types';
-
-// Initial System State - ONLY Super Admin exists
-const INITIAL_USERS: User[] = [
-  {
-    id: 'adm-root',
-    name: 'DevX Super Admin',
-    email: 'admin',
-    password: 'admin',
-    role: UserRole.ADMIN,
-    verificationStatus: VerificationStatus.VERIFIED,
-    registrationDate: new Date().toISOString()
-  }
-];
-
-// Persistence Helper
-const loadFromStorage = <T,>(key: string, fallback: T): T => {
-    try {
-        const stored = localStorage.getItem(key);
-        return stored ? JSON.parse(stored) : fallback;
-    } catch (e) {
-        console.error("Storage Load Error", e);
-        return fallback;
-    }
-};
+import { dbService } from './services/db';
+import { Loader2 } from 'lucide-react';
 
 function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
   
-  // Load state from local storage or use initial defaults
-  const [registeredUsers, setRegisteredUsers] = useState<User[]>(() => 
-      loadFromStorage('devx_users', INITIAL_USERS)
-  );
-  const [prescriptions, setPrescriptions] = useState<Prescription[]>(() => 
-      loadFromStorage('devx_prescriptions', [])
-  );
+  // Application State
+  const [registeredUsers, setRegisteredUsers] = useState<User[]>([]);
+  const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
 
-  // Persist state changes
+  // --- Initialization ---
   useEffect(() => {
-      localStorage.setItem('devx_users', JSON.stringify(registeredUsers));
-  }, [registeredUsers]);
+      const init = async () => {
+          const { users, rx } = await dbService.loadData();
+          setRegisteredUsers(users);
+          setPrescriptions(rx);
+          setIsLoaded(true);
+      };
+      init();
+  }, []);
+
+  // --- Persistence Listeners ---
+  // Only save when data changes AND after initial load (to prevent overwriting cloud with empty defaults)
+  useEffect(() => {
+      if (isLoaded) {
+          dbService.saveUsers(registeredUsers);
+      }
+  }, [registeredUsers, isLoaded]);
 
   useEffect(() => {
-      localStorage.setItem('devx_prescriptions', JSON.stringify(prescriptions));
-  }, [prescriptions]);
+      if (isLoaded) {
+          dbService.savePrescriptions(prescriptions);
+      }
+  }, [prescriptions, isLoaded]);
+
 
   // Filter Verified Pharmacies for Doctor View
   const verifiedPharmacies = registeredUsers.filter(
       u => u.role === UserRole.PHARMACY && u.verificationStatus === VerificationStatus.VERIFIED
   );
 
-  // Handle new registrations from Login screen
+  // --- Actions ---
+
   const handleRegister = (newUser: User) => {
     setRegisteredUsers(prev => [...prev, newUser]);
     return true;
   };
 
-  // Handle Status Updates from Admin Dashboard
   const handleUpdateUserStatus = (userId: string, newStatus: VerificationStatus) => {
     setRegisteredUsers(prev => 
       prev.map(u => u.id === userId ? { ...u, verificationStatus: newStatus } : u)
     );
   };
 
-  // Handle User Termination with Reason
   const handleTerminateUser = (userId: string, reason: string) => {
     setRegisteredUsers(prev => 
         prev.map(u => u.id === userId ? { 
@@ -81,7 +72,6 @@ function App() {
     );
   };
 
-  // Handle Password Reset
   const handleResetPassword = (userId: string) => {
     setRegisteredUsers(prev =>
         prev.map(u => u.id === userId ? { ...u, forcePasswordChange: true } : u)
@@ -89,12 +79,10 @@ function App() {
     alert(`Temporary password sent to user ${userId}.`);
   };
 
-  // Handle Prescription Creation
   const handleCreatePrescription = (newRx: Prescription) => {
     setPrescriptions(prev => [newRx, ...prev]);
   };
 
-  // Handle Dispense
   const handleDispensePrescription = (rxId: string) => {
     setPrescriptions(prev => 
         prev.map(rx => rx.id === rxId ? { ...rx, status: 'DISPENSED' } : rx)
@@ -111,10 +99,21 @@ function App() {
 
   const handleDoctorVerificationComplete = (profile: DoctorProfile) => {
       console.log("Verification Submitted:", profile);
-      // In a real app, this would update the user's detailed profile
-      // For prototype, assume it triggers a re-review
       alert("Details submitted to Admin for re-verification.");
   };
+
+  // --- Render ---
+
+  if (!isLoaded) {
+      return (
+          <div className="min-h-screen flex items-center justify-center bg-slate-50">
+              <div className="text-center">
+                  <Loader2 className="w-10 h-10 text-indigo-600 animate-spin mx-auto mb-4"/>
+                  <p className="text-slate-500 font-medium">Connecting to DevXWorld Secure Cloud...</p>
+              </div>
+          </div>
+      );
+  }
 
   return (
     <Layout user={currentUser} onLogout={handleLogout}>

@@ -241,10 +241,6 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
                     <>Proceed Securely <ArrowRight className="ml-2 h-4 w-4" /></>
                 )}
                 </button>
-                
-                {selectedRole === UserRole.ADMIN && (
-                    <p className="text-xs text-slate-400 text-center">Test Admin: admin / admin</p>
-                )}
             </form>
             ) : (
             <form onSubmit={handleOtpSubmit} className="space-y-6">
