@@ -1,5 +1,6 @@
+
 import React, { useState } from 'react';
-import { ShieldAlert, Plus, CheckCircle2, AlertTriangle, Trash2, FileText, Activity, RefreshCw } from 'lucide-react';
+import { ShieldAlert, Plus, CheckCircle2, AlertTriangle, Trash2, FileText, Activity, RefreshCw, Ban } from 'lucide-react';
 import { AdminRole, AdminPermission, AdminUser, User, UserRole, VerificationStatus, Prescription } from '../../types';
 
 interface AdminDashboardProps {
@@ -7,6 +8,7 @@ interface AdminDashboardProps {
     prescriptions: Prescription[];
     onUpdateStatus: (userId: string, status: VerificationStatus) => void;
     onTerminateUser: (userId: string, reason: string) => void;
+    onDeleteUser: (userId: string) => void;
     onResetPassword: (userId: string) => void;
 }
 
@@ -198,11 +200,13 @@ const UserRegistry = ({
     users, 
     onAction, 
     onTerminate,
+    onDelete,
     onReset 
 }: { 
     users: User[], 
     onAction: (id: string, status: VerificationStatus) => void,
     onTerminate: (id: string, reason: string) => void,
+    onDelete: (id: string) => void,
     onReset: (id: string) => void
 }) => {
     const [terminateModalUser, setTerminateModalUser] = useState<string | null>(null);
@@ -213,6 +217,12 @@ const UserRegistry = ({
             onTerminate(terminateModalUser, terminationReason);
             setTerminateModalUser(null);
             setTerminationReason("");
+        }
+    };
+
+    const handleDeleteClick = (userId: string) => {
+        if (window.confirm("Are you sure you want to PERMANENTLY DELETE this user? This action cannot be undone.")) {
+            onDelete(userId);
         }
     };
 
@@ -269,16 +279,20 @@ const UserRegistry = ({
                                             </button>
                                             <button 
                                                 onClick={() => setTerminateModalUser(u.id)}
-                                                className="text-red-600 hover:text-red-900 inline-flex items-center"
-                                                title="Terminate Account"
+                                                className="text-amber-600 hover:text-amber-900 inline-flex items-center"
+                                                title="Terminate Account (Block)"
                                             >
-                                                <Trash2 className="w-4 h-4"/>
+                                                <Ban className="w-4 h-4"/>
                                             </button>
                                         </>
                                     )}
-                                    {u.verificationStatus === VerificationStatus.TERMINATED && (
-                                        <span className="text-slate-400 text-xs italic">Access Revoked</span>
-                                    )}
+                                    <button 
+                                        onClick={() => handleDeleteClick(u.id)}
+                                        className="text-red-600 hover:text-red-900 inline-flex items-center ml-2"
+                                        title="Permanently Delete"
+                                    >
+                                        <Trash2 className="w-4 h-4"/>
+                                    </button>
                                 </td>
                             </tr>
                         ))}
@@ -552,6 +566,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     prescriptions, 
     onUpdateStatus,
     onTerminateUser,
+    onDeleteUser,
     onResetPassword 
 }) => {
     const [activeView, setActiveView] = useState<'OVERVIEW' | 'REGISTRY' | 'ROLES' | 'ANALYTICS' | 'RX_LOGS'>('OVERVIEW');
@@ -621,6 +636,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             users={displayedUsers} 
                             onAction={onUpdateStatus} 
                             onTerminate={onTerminateUser}
+                            onDelete={onDeleteUser}
                             onReset={onResetPassword}
                         />
                     </div>

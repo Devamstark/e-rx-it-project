@@ -107,6 +107,10 @@ function App() {
     );
   };
 
+  const handleDeleteUser = (userId: string) => {
+    setRegisteredUsers(prev => prev.filter(u => u.id !== userId));
+  };
+
   const handleResetPassword = (userId: string) => {
     setRegisteredUsers(prev =>
         prev.map(u => u.id === userId ? { ...u, forcePasswordChange: true } : u)
@@ -187,6 +191,7 @@ function App() {
               prescriptions={prescriptions}
               onUpdateStatus={handleUpdateUserStatus}
               onTerminateUser={handleTerminateUser}
+              onDeleteUser={handleDeleteUser}
               onResetPassword={handleResetPassword}
             />
           )}
