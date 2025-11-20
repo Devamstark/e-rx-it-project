@@ -1,6 +1,6 @@
 import React from 'react';
-import { LogOut, ShieldCheck, LayoutDashboard, FileText, UserCheck } from 'lucide-react';
-import { User, UserRole } from '../../types';
+import { LogOut, ShieldCheck } from 'lucide-react';
+import { User } from '../../types';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -49,7 +49,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
       {/* Footer */}
       <footer className="bg-slate-900 text-slate-400 py-6 mt-auto">
         <div className="max-w-7xl mx-auto px-4 text-center text-sm">
-          <p>&copy; {new Date().getFullYear()} DevXWorld. Compliant with India Telemedicine Practice Guidelines 2020 & DPDP Act 2023.</p>
+          <p>&copy; {new Date().getFullYear()} E-rx by DevXWorld. Compliant with India Telemedicine Practice Guidelines 2020 & DPDP Act 2023.</p>
         </div>
       </footer>
     </div>
