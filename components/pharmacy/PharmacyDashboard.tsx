@@ -1,18 +1,26 @@
 
 import React, { useState } from 'react';
-import { CheckCircle, Eye, History, Package, Search, X, ClipboardList, FileText } from 'lucide-react';
-import { Prescription, User } from '../../types';
+import { CheckCircle, Eye, History, Package, Search, X, ClipboardList, FileText, ShoppingCart, Plus, Save, Trash2 } from 'lucide-react';
+import { Prescription, User, InventoryItem } from '../../types';
+import { PrescriptionModal } from '../doctor/PrescriptionModal';
 
 interface PharmacyDashboardProps {
     prescriptions: Prescription[];
     onDispense: (id: string) => void;
     currentUser: User;
+    onUpdateUser: (user: User) => void;
 }
 
-export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ prescriptions, onDispense, currentUser }) => {
-  const [view, setView] = useState<'QUEUE' | 'HISTORY'>('QUEUE');
+export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ prescriptions, onDispense, currentUser, onUpdateUser }) => {
+  const [view, setView] = useState<'QUEUE' | 'HISTORY' | 'INVENTORY'>('QUEUE');
   const [selectedRx, setSelectedRx] = useState<Prescription | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Inventory State
+  const [newItem, setNewItem] = useState<InventoryItem>({
+      id: '', name: '', batchNumber: '', expiryDate: '', stock: 0, unitPrice: 0
+  });
+  const [isAddItemOpen, setIsAddItemOpen] = useState(false);
 
   // Secure filtering: Only show prescriptions specifically assigned to this pharmacy's ID
   const myPrescriptions = prescriptions.filter(p => p.pharmacyId === currentUser.id);
@@ -28,6 +36,32 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ prescripti
         p.doctorName.toLowerCase().includes(lowerTerm)
       );
   }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  // Inventory Handlers
+  const handleAddInventory = () => {
+      if(!newItem.name || !newItem.stock) return;
+      
+      const inventory = currentUser.inventory || [];
+      const itemToAdd = { ...newItem, id: `inv-${Date.now()}` };
+      
+      const updatedUser = {
+          ...currentUser,
+          inventory: [...inventory, itemToAdd]
+      };
+      
+      onUpdateUser(updatedUser);
+      setNewItem({ id: '', name: '', batchNumber: '', expiryDate: '', stock: 0, unitPrice: 0 });
+      setIsAddItemOpen(false);
+  };
+
+  const handleDeleteInventory = (itemId: string) => {
+      const inventory = currentUser.inventory || [];
+      const updatedUser = {
+          ...currentUser,
+          inventory: inventory.filter(i => i.id !== itemId)
+      };
+      onUpdateUser(updatedUser);
+  };
 
   return (
     <div className="max-w-7xl mx-auto animate-in fade-in duration-500">
@@ -66,9 +100,19 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ prescripti
           >
             <History className="w-4 h-4 mr-2"/> Audit History
           </button>
+          <button 
+            onClick={() => setView('INVENTORY')}
+            className={`px-4 py-2 rounded-md text-sm font-medium flex items-center transition-all ${
+                view === 'INVENTORY' 
+                ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-black/5' 
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
+            }`}
+          >
+            <ShoppingCart className="w-4 h-4 mr-2"/> Inventory Management
+          </button>
       </div>
 
-      {view === 'QUEUE' ? (
+      {view === 'QUEUE' && (
           <div className="bg-white shadow-sm rounded-lg border border-slate-200 overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-200 bg-indigo-50 flex items-center justify-between">
                 <h3 className="font-bold text-indigo-900">Active Prescriptions</h3>
@@ -132,7 +176,9 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ prescripti
                 </table>
             </div>
           </div>
-      ) : (
+      )}
+
+      {view === 'HISTORY' && (
           <div className="bg-white shadow-sm rounded-lg border border-slate-200 overflow-hidden">
              <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
@@ -210,110 +256,124 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({ prescripti
           </div>
       )}
 
-      {/* Detailed Prescription Modal */}
-      {selectedRx && (
-          <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-              <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-slate-200">
-                  <div className="bg-indigo-900 px-6 py-4 flex justify-between items-center sticky top-0 z-10">
-                      <div className="text-white">
-                          <h3 className="font-bold text-lg flex items-center">
-                              <FileText className="mr-2 h-5 w-5 text-indigo-300"/> Digital Prescription
-                          </h3>
-                          <p className="text-xs text-indigo-300 font-mono mt-0.5">{selectedRx.id}</p>
-                      </div>
-                      <button onClick={() => setSelectedRx(null)} className="bg-white/10 hover:bg-white/20 text-white p-1.5 rounded-full transition-colors">
-                          <X className="w-5 h-5"/>
-                      </button>
-                  </div>
+      {view === 'INVENTORY' && (
+          <div className="space-y-6">
+              {/* Add Item Card */}
+              <div className="bg-white p-6 rounded-lg border border-slate-200 shadow-sm">
+                   <div className="flex justify-between items-center mb-4">
+                        <h3 className="font-bold text-slate-800">Inventory Stock</h3>
+                        <button 
+                            onClick={() => setIsAddItemOpen(!isAddItemOpen)}
+                            className="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700 flex items-center"
+                        >
+                            <Plus className="w-4 h-4 mr-2"/> Add New Item
+                        </button>
+                   </div>
 
-                  <div className="p-6 sm:p-8 space-y-8">
-                      {/* Doctor & Patient Header */}
-                      <div className="flex flex-col sm:flex-row justify-between gap-6 p-4 bg-slate-50 rounded-lg border border-slate-100">
-                          <div>
-                              <p className="text-xs font-bold text-slate-400 uppercase mb-1">Prescribed By</p>
-                              <p className="text-lg font-bold text-slate-800">{selectedRx.doctorName}</p>
-                              <p className="text-sm text-slate-500">Registered Medical Practitioner</p>
-                          </div>
-                          <div className="sm:text-right">
-                              <p className="text-xs font-bold text-slate-400 uppercase mb-1">Patient Details</p>
-                              <p className="text-lg font-bold text-slate-800">{selectedRx.patientName}</p>
-                              <p className="text-sm text-slate-500">{selectedRx.patientAge} Years, {selectedRx.patientGender}</p>
-                          </div>
-                      </div>
+                   {isAddItemOpen && (
+                       <div className="bg-slate-50 p-4 rounded border border-slate-200 mb-6 animate-in fade-in slide-in-from-top-2">
+                           <h4 className="text-sm font-bold text-slate-700 mb-3">Add Medicine to Stock</h4>
+                           <div className="grid grid-cols-1 sm:grid-cols-5 gap-4 items-end">
+                               <div className="col-span-2">
+                                   <label className="block text-xs font-bold text-slate-500 mb-1">Medicine Name</label>
+                                   <input 
+                                        type="text" 
+                                        className="w-full border p-2 rounded text-sm"
+                                        placeholder="e.g. Paracetamol 500mg"
+                                        value={newItem.name}
+                                        onChange={(e) => setNewItem({...newItem, name: e.target.value})}
+                                   />
+                               </div>
+                               <div>
+                                   <label className="block text-xs font-bold text-slate-500 mb-1">Batch No.</label>
+                                   <input 
+                                        type="text" 
+                                        className="w-full border p-2 rounded text-sm"
+                                        placeholder="B-123"
+                                        value={newItem.batchNumber}
+                                        onChange={(e) => setNewItem({...newItem, batchNumber: e.target.value})}
+                                   />
+                               </div>
+                               <div>
+                                   <label className="block text-xs font-bold text-slate-500 mb-1">Expiry Date</label>
+                                   <input 
+                                        type="date" 
+                                        className="w-full border p-2 rounded text-sm"
+                                        value={newItem.expiryDate}
+                                        onChange={(e) => setNewItem({...newItem, expiryDate: e.target.value})}
+                                   />
+                               </div>
+                               <div>
+                                   <label className="block text-xs font-bold text-slate-500 mb-1">Stock Qty</label>
+                                   <input 
+                                        type="number" 
+                                        className="w-full border p-2 rounded text-sm"
+                                        value={newItem.stock}
+                                        onChange={(e) => setNewItem({...newItem, stock: parseInt(e.target.value) || 0})}
+                                   />
+                               </div>
+                           </div>
+                           <div className="mt-4 flex justify-end">
+                               <button 
+                                onClick={handleAddInventory}
+                                className="bg-green-600 text-white px-6 py-2 rounded text-sm font-bold hover:bg-green-700 flex items-center"
+                               >
+                                   <Save className="w-4 h-4 mr-2"/> Save to Inventory
+                               </button>
+                           </div>
+                       </div>
+                   )}
 
-                      {/* Diagnosis */}
-                      <div>
-                          <h4 className="text-sm font-bold text-slate-900 mb-2 flex items-center">
-                             Diagnosis / Clinical Notes
-                          </h4>
-                          <div className="p-3 bg-white border border-slate-200 rounded text-slate-700 text-sm">
-                              {selectedRx.diagnosis}
-                          </div>
-                      </div>
-
-                      {/* Medicines Table */}
-                      <div>
-                          <h4 className="text-sm font-bold text-slate-900 mb-3 flex items-center">
-                              <ClipboardList className="w-4 h-4 mr-2 text-indigo-600"/> Medication Details
-                          </h4>
-                          <div className="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm">
-                              <table className="min-w-full text-sm">
-                                  <thead className="bg-slate-50 border-b border-slate-200">
-                                      <tr>
-                                          <th className="px-4 py-3 text-left font-bold text-slate-600">Medicine Name</th>
-                                          <th className="px-4 py-3 text-left font-bold text-slate-600">Dosage</th>
-                                          <th className="px-4 py-3 text-left font-bold text-slate-600">Frequency</th>
-                                          <th className="px-4 py-3 text-left font-bold text-slate-600">Duration</th>
-                                          <th className="px-4 py-3 text-left font-bold text-slate-600">Instructions</th>
-                                      </tr>
-                                  </thead>
-                                  <tbody className="divide-y divide-slate-100">
-                                      {selectedRx.medicines.map((m, i) => (
-                                          <tr key={i} className="hover:bg-slate-50">
-                                              <td className="px-4 py-3 font-medium text-slate-900">{m.name}</td>
-                                              <td className="px-4 py-3 text-slate-600">{m.dosage}</td>
-                                              <td className="px-4 py-3 text-slate-600">{m.frequency}</td>
-                                              <td className="px-4 py-3 text-slate-600">{m.duration}</td>
-                                              <td className="px-4 py-3 text-slate-500 italic text-xs">{m.instructions || '-'}</td>
-                                          </tr>
-                                      ))}
-                                  </tbody>
-                              </table>
-                          </div>
-                      </div>
-                      
-                      {/* Advice */}
-                      {selectedRx.advice && (
-                        <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-                             <h4 className="text-xs font-bold text-blue-800 uppercase mb-1">Additional Advice</h4>
-                             <p className="text-sm text-blue-900">{selectedRx.advice}</p>
-                        </div>
-                      )}
-
-                      {/* Footer */}
-                      <div className="flex flex-col sm:flex-row justify-between items-center pt-6 border-t border-slate-100 gap-4">
-                          <div className="text-center sm:text-left">
-                              <p className="text-xs text-slate-400 mb-1">Digital Signature Token</p>
-                              <code className="bg-slate-100 px-2 py-1 rounded text-xs text-slate-600 font-mono block">{selectedRx.digitalSignatureToken}</code>
-                          </div>
-                          <div>
-                              {selectedRx.status === 'ISSUED' ? (
-                                  <button 
-                                    onClick={() => { onDispense(selectedRx.id); setSelectedRx(null); }}
-                                    className="bg-green-600 text-white px-6 py-2 rounded-md font-bold shadow hover:bg-green-700 transition-colors flex items-center"
-                                  >
-                                      <CheckCircle className="w-4 h-4 mr-2"/> Dispense Now
-                                  </button>
-                              ) : (
-                                  <span className="inline-flex items-center px-4 py-2 rounded-md bg-slate-100 text-slate-600 font-bold border border-slate-200 cursor-not-allowed">
-                                      <CheckCircle className="w-4 h-4 mr-2 text-green-600"/> Already Dispensed
-                                  </span>
-                              )}
-                          </div>
-                      </div>
-                  </div>
+                   <div className="overflow-x-auto border border-slate-200 rounded-lg">
+                       <table className="min-w-full divide-y divide-slate-200">
+                           <thead className="bg-slate-50">
+                               <tr>
+                                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Medicine Name</th>
+                                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Batch No</th>
+                                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Expiry</th>
+                                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Stock</th>
+                                   <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">Actions</th>
+                               </tr>
+                           </thead>
+                           <tbody className="bg-white divide-y divide-slate-200">
+                               {(!currentUser.inventory || currentUser.inventory.length === 0) ? (
+                                   <tr>
+                                       <td colSpan={5} className="px-6 py-8 text-center text-slate-500">Inventory is empty. Add items to track stock.</td>
+                                   </tr>
+                               ) : (
+                                   currentUser.inventory.map(item => (
+                                       <tr key={item.id}>
+                                           <td className="px-6 py-4 text-sm font-medium text-slate-900">{item.name}</td>
+                                           <td className="px-6 py-4 text-sm text-slate-500">{item.batchNumber || '-'}</td>
+                                           <td className="px-6 py-4 text-sm text-slate-500">{item.expiryDate || '-'}</td>
+                                           <td className="px-6 py-4 text-sm font-bold text-slate-700">{item.stock} units</td>
+                                           <td className="px-6 py-4 text-right">
+                                               <button 
+                                                onClick={() => handleDeleteInventory(item.id)}
+                                                className="text-red-500 hover:text-red-700 p-1"
+                                                title="Remove Item"
+                                               >
+                                                   <Trash2 className="w-4 h-4"/>
+                                               </button>
+                                           </td>
+                                       </tr>
+                                   ))
+                               )}
+                           </tbody>
+                       </table>
+                   </div>
               </div>
           </div>
+      )}
+
+      {/* Detailed Prescription Modal with Print */}
+      {selectedRx && (
+          <PrescriptionModal 
+            prescription={selectedRx} 
+            onClose={() => setSelectedRx(null)} 
+            onDispense={onDispense}
+            isPharmacy={true}
+          />
       )}
     </div>
   );

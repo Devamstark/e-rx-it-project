@@ -1,8 +1,7 @@
 
 import React, { useState } from 'react';
 import { UserRole, User, VerificationStatus } from '../../types';
-import { Shield, ArrowRight, Loader2, AlertCircle, CheckCircle2, Building2, Stethoscope, Settings, Save, CloudOff } from 'lucide-react';
-import { dbService } from '../../services/db';
+import { Shield, ArrowRight, Loader2, AlertCircle, CheckCircle2, Building2, Stethoscope } from 'lucide-react';
 
 interface LoginProps {
   onLogin: (user: User) => void;
@@ -17,11 +16,6 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
-  const [showConfig, setShowConfig] = useState(false);
-
-  // Config State
-  const [dbUrl, setDbUrl] = useState('');
-  const [dbKey, setDbKey] = useState('');
 
   // Form states
   const [email, setEmail] = useState('');
@@ -143,24 +137,9 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
     }, 1000);
   };
 
-  const handleConfigSave = () => {
-      if (dbUrl && dbKey) {
-          dbService.configureCloud(dbUrl, dbKey);
-      }
-  };
-
   return (
     <div className="max-w-md mx-auto mt-10 bg-white rounded-xl shadow-xl overflow-hidden border border-slate-200 relative">
        
-       {/* Config Button */}
-       <button 
-        onClick={() => setShowConfig(true)}
-        className="absolute top-4 right-4 text-indigo-200 hover:text-indigo-600 transition-colors"
-        title="System Configuration"
-       >
-           <Settings className="w-5 h-5" />
-       </button>
-
       <div className="bg-indigo-50 p-6 border-b border-indigo-100">
         <h2 className="text-2xl font-bold text-indigo-900 text-center">DevXWorld Secure Portal</h2>
         <p className="text-center text-indigo-600 text-sm mt-1">
@@ -368,62 +347,6 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
       <div className="px-8 py-4 bg-slate-50 border-t border-slate-200 text-xs text-slate-500 text-center">
         Compliance: DPDP Act 2023 & Telemedicine Guidelines 2020.
       </div>
-
-      {/* Configuration Modal */}
-      {showConfig && (
-          <div className="absolute inset-0 bg-white z-50 p-6 animate-in fade-in slide-in-from-bottom-10">
-              <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center">
-                  <Settings className="w-5 h-5 mr-2"/> System Configuration
-              </h3>
-              <p className="text-xs text-slate-500 mb-4">Connect to a centralized database to persist data across devices.</p>
-              
-              <div className="space-y-4">
-                  <div>
-                      <label className="block text-xs font-bold text-slate-700 uppercase">Supabase Project URL</label>
-                      <input 
-                        type="text" 
-                        value={dbUrl} 
-                        onChange={(e) => setDbUrl(e.target.value)}
-                        placeholder="https://your-project.supabase.co"
-                        className="w-full border border-slate-300 rounded p-2 text-xs mt-1"
-                      />
-                  </div>
-                  <div>
-                      <label className="block text-xs font-bold text-slate-700 uppercase">Anon / Public Key</label>
-                      <textarea 
-                        value={dbKey} 
-                        onChange={(e) => setDbKey(e.target.value)}
-                        placeholder="eyJhbGci..."
-                        className="w-full border border-slate-300 rounded p-2 text-xs mt-1 h-20"
-                      />
-                  </div>
-                  
-                  <button 
-                    onClick={handleConfigSave}
-                    disabled={!dbUrl || !dbKey}
-                    className="w-full bg-green-600 text-white py-2 rounded text-sm font-bold flex items-center justify-center hover:bg-green-700 disabled:opacity-50"
-                  >
-                      <Save className="w-4 h-4 mr-2"/> Connect & Sync
-                  </button>
-
-                  {dbService.isCloudEnabled() && (
-                      <button 
-                        onClick={() => dbService.disconnectCloud()}
-                        className="w-full bg-slate-100 text-slate-600 py-2 rounded text-sm font-bold flex items-center justify-center hover:bg-slate-200"
-                      >
-                          <CloudOff className="w-4 h-4 mr-2"/> Disconnect Cloud
-                      </button>
-                  )}
-
-                  <button 
-                    onClick={() => setShowConfig(false)}
-                    className="w-full text-slate-400 text-xs hover:text-slate-600"
-                  >
-                      Close Configuration
-                  </button>
-              </div>
-          </div>
-      )}
     </div>
   );
 };

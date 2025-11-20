@@ -4,6 +4,7 @@ import { useFieldArray, useForm } from 'react-hook-form';
 import { Medicine, Prescription, User } from '../../types';
 import { Plus, Trash2, Send, BrainCircuit, FileText, AlertTriangle } from 'lucide-react';
 import { analyzePrescriptionSafety } from '../../services/geminiService';
+import { COMMON_MEDICINES } from '../../constants';
 
 interface CreatePrescriptionProps {
   doctorId: string;
@@ -112,11 +113,20 @@ export const CreatePrescription: React.FC<CreatePrescriptionProps> = ({ doctorId
                 </button>
             </div>
             
+            <datalist id="common-medicines">
+                {COMMON_MEDICINES.map(med => <option key={med} value={med} />)}
+            </datalist>
+
             <div className="space-y-3">
                 {fields.map((field, index) => (
                     <div key={field.id} className="grid grid-cols-12 gap-2 items-start bg-slate-50 p-3 rounded-md border border-slate-200">
                         <div className="col-span-4">
-                            <input {...register(`medicines.${index}.name` as const, { required: true })} placeholder="Medicine Name" className="w-full text-sm border-slate-300 rounded border p-1.5" />
+                            <input 
+                              {...register(`medicines.${index}.name` as const, { required: true })} 
+                              list="common-medicines"
+                              placeholder="Medicine Name" 
+                              className="w-full text-sm border-slate-300 rounded border p-1.5" 
+                            />
                         </div>
                         <div className="col-span-2">
                              <input {...register(`medicines.${index}.dosage` as const)} placeholder="Dose (500mg)" className="w-full text-sm border-slate-300 rounded border p-1.5" />

@@ -95,6 +95,10 @@ function App() {
     );
   };
 
+  const handleUpdateUser = (updatedUser: User) => {
+    setRegisteredUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
+  };
+
   const handleTerminateUser = (userId: string, reason: string) => {
     setRegisteredUsers(prev => 
         prev.map(u => u.id === userId ? { 
@@ -183,6 +187,7 @@ function App() {
                 prescriptions={prescriptions}
                 onDispense={handleDispensePrescription}
                 currentUser={currentUser}
+                onUpdateUser={handleUpdateUser}
             />
           )}
           {currentUser.role === UserRole.ADMIN && (

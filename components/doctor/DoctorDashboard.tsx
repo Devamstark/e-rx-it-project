@@ -3,7 +3,8 @@ import React, { useState } from 'react';
 import { DoctorProfile, VerificationStatus, Prescription, User } from '../../types';
 import { DoctorVerification } from './DoctorVerification';
 import { CreatePrescription } from './CreatePrescription';
-import { ClipboardList, User as UserIcon, History, Bell, Eye, X } from 'lucide-react';
+import { ClipboardList, User as UserIcon, History, Bell, Eye } from 'lucide-react';
+import { PrescriptionModal } from './PrescriptionModal';
 
 interface DoctorDashboardProps {
   status: VerificationStatus;
@@ -135,83 +136,10 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
 
       {/* Detailed View Modal */}
       {selectedRx && (
-          <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-              <div className="bg-white rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                  <div className="bg-indigo-600 px-6 py-4 flex justify-between items-center sticky top-0">
-                      <h3 className="text-white font-bold text-lg flex items-center">
-                          <ClipboardList className="mr-2"/> Prescription Details
-                      </h3>
-                      <button onClick={() => setSelectedRx(null)} className="text-white/80 hover:text-white">
-                          <X className="w-6 h-6"/>
-                      </button>
-                  </div>
-                  <div className="p-6 space-y-6">
-                      <div className="grid grid-cols-2 gap-4 border-b border-slate-100 pb-4">
-                          <div>
-                              <p className="text-xs text-slate-500 uppercase">Prescription ID</p>
-                              <p className="font-mono text-slate-700">{selectedRx.id}</p>
-                          </div>
-                          <div>
-                              <p className="text-xs text-slate-500 uppercase">Date Issued</p>
-                              <p className="text-slate-700">{new Date(selectedRx.date).toLocaleString()}</p>
-                          </div>
-                          <div>
-                              <p className="text-xs text-slate-500 uppercase">Patient Name</p>
-                              <p className="text-slate-900 font-medium">{selectedRx.patientName} ({selectedRx.patientAge}, {selectedRx.patientGender})</p>
-                          </div>
-                          <div>
-                              <p className="text-xs text-slate-500 uppercase">Assigned Pharmacy</p>
-                              <p className="text-slate-900 font-medium">{selectedRx.pharmacyName}</p>
-                          </div>
-                      </div>
-
-                      <div>
-                          <h4 className="font-bold text-slate-800 mb-2">Diagnosis</h4>
-                          <p className="bg-slate-50 p-3 rounded border border-slate-100 text-slate-700">{selectedRx.diagnosis}</p>
-                      </div>
-
-                      <div>
-                          <h4 className="font-bold text-slate-800 mb-2">Medications</h4>
-                          <div className="bg-white border border-slate-200 rounded overflow-hidden">
-                              <table className="min-w-full text-sm">
-                                  <thead className="bg-slate-50">
-                                      <tr>
-                                          <th className="px-4 py-2 text-left font-medium text-slate-500">Drug Name</th>
-                                          <th className="px-4 py-2 text-left font-medium text-slate-500">Dosage</th>
-                                          <th className="px-4 py-2 text-left font-medium text-slate-500">Freq.</th>
-                                          <th className="px-4 py-2 text-left font-medium text-slate-500">Duration</th>
-                                      </tr>
-                                  </thead>
-                                  <tbody className="divide-y divide-slate-100">
-                                      {selectedRx.medicines.map((m, i) => (
-                                          <tr key={i}>
-                                              <td className="px-4 py-2">{m.name}</td>
-                                              <td className="px-4 py-2">{m.dosage}</td>
-                                              <td className="px-4 py-2">{m.frequency}</td>
-                                              <td className="px-4 py-2">{m.duration}</td>
-                                          </tr>
-                                      ))}
-                                  </tbody>
-                              </table>
-                          </div>
-                      </div>
-
-                      {selectedRx.advice && (
-                          <div>
-                              <h4 className="font-bold text-slate-800 mb-2">Advice / Instructions</h4>
-                              <p className="text-slate-600 italic">{selectedRx.advice}</p>
-                          </div>
-                      )}
-
-                      <div className="pt-4 border-t border-slate-100 flex justify-between items-center">
-                          <p className="text-xs text-slate-400 font-mono">{selectedRx.digitalSignatureToken}</p>
-                          <span className={`px-3 py-1 rounded-full text-xs font-bold ${selectedRx.status === 'DISPENSED' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
-                              Status: {selectedRx.status}
-                          </span>
-                      </div>
-                  </div>
-              </div>
-          </div>
+          <PrescriptionModal 
+            prescription={selectedRx} 
+            onClose={() => setSelectedRx(null)} 
+          />
       )}
     </div>
   );

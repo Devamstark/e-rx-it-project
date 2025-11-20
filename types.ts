@@ -35,6 +35,15 @@ export interface DbConfig {
     key: string;
 }
 
+export interface InventoryItem {
+  id: string;
+  name: string;
+  batchNumber: string;
+  expiryDate: string;
+  stock: number;
+  unitPrice: number;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -46,6 +55,9 @@ export interface User {
   licenseNumber?: string;
   state?: string;
   
+  // Pharmacy specific
+  inventory?: InventoryItem[];
+
   // Termination details
   terminatedAt?: string | null;
   terminatedBy?: string | null;

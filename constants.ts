@@ -15,3 +15,13 @@ export const SPECIALTIES = [
   "General Physician", "Cardiologist", "Dermatologist", "Pediatrician", 
   "Gynecologist", "Orthopedist", "Psychiatrist", "Neurologist"
 ];
+
+export const COMMON_MEDICINES = [
+  "Paracetamol 500mg", "Paracetamol 650mg", "Amoxicillin 500mg", "Azithromycin 500mg", 
+  "Metformin 500mg", "Metformin 1000mg", "Atorvastatin 10mg", "Atorvastatin 20mg",
+  "Pantoprazole 40mg", "Omeprazole 20mg", "Rabeprazole 20mg", "Cetirizine 10mg", 
+  "Levocetirizine 5mg", "Ibuprofen 400mg", "Diclofenac 50mg", "Aspirin 75mg", 
+  "Telmisartan 40mg", "Amlodipine 5mg", "Losartan 50mg", "Montelukast 10mg",
+  "Vitamin C 500mg", "Vitamin D3 60000IU", "B-Complex", "Calcium Carbonate 500mg",
+  "Dolo 650", "Augmentin 625", "Pan 40", "Allegra 120mg", "Combiflam"
+];
