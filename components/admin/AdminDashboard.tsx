@@ -1,6 +1,5 @@
-
 import React, { useState } from 'react';
-import { Users, ShieldAlert, LayoutDashboard, Shield, Lock, Edit2, Plus, CheckCircle2, XCircle, AlertTriangle, Trash2, FileText, Activity, RefreshCw } from 'lucide-react';
+import { ShieldAlert, Plus, CheckCircle2, AlertTriangle, Trash2, FileText, Activity, RefreshCw } from 'lucide-react';
 import { AdminRole, AdminPermission, AdminUser, User, UserRole, VerificationStatus, Prescription } from '../../types';
 
 interface AdminDashboardProps {

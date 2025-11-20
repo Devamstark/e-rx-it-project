@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { UserRole, User, VerificationStatus } from '../../types';
-import { Lock, Shield, ArrowRight, Loader2, User as UserIcon, AlertCircle, CheckCircle2, Building2, Stethoscope } from 'lucide-react';
+import { Shield, ArrowRight, Loader2, AlertCircle, CheckCircle2, Building2, Stethoscope } from 'lucide-react';
 
 interface LoginProps {
   onLogin: (user: User) => void;
