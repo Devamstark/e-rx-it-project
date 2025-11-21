@@ -1,7 +1,8 @@
 
 import React, { useState } from 'react';
-import { UserRole, User, VerificationStatus } from '../../types';
-import { Shield, ArrowRight, Loader2, AlertCircle, CheckCircle2, Building2, Stethoscope, CheckSquare } from 'lucide-react';
+import { UserRole, User, VerificationStatus, DocumentType, UserDocument } from '../../types';
+import { Shield, ArrowRight, Loader2, AlertCircle, CheckCircle2, Building2, Stethoscope, CheckSquare, Upload } from 'lucide-react';
+import { dbService } from '../../services/db';
 
 interface LoginProps {
   onLogin: (user: User) => void;
@@ -27,6 +28,10 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
   const [regLicense, setRegLicense] = useState('');
   const [regState, setRegState] = useState('');
   const [agreeConsent, setAgreeConsent] = useState(false);
+  
+  // File Upload State for Pharmacy
+  const [uploadedDoc, setUploadedDoc] = useState<UserDocument | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const resetForm = () => {
     setEmail('');
@@ -36,9 +41,33 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
     setRegLicense('');
     setRegState('');
     setAgreeConsent(false);
+    setUploadedDoc(null);
     setError('');
     setStatusMessage('');
     setStep('CREDENTIALS');
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files && e.target.files[0]) {
+          const file = e.target.files[0];
+          setIsUploading(true);
+          try {
+              const url = await dbService.uploadFile(file);
+              const doc: UserDocument = {
+                  id: `doc-${Date.now()}`,
+                  type: DocumentType.PHARMACY_LICENSE,
+                  name: file.name,
+                  url: url,
+                  uploadedAt: new Date().toISOString()
+              };
+              setUploadedDoc(doc);
+              setError("");
+          } catch (err: any) {
+              setError(err.message || "File upload failed");
+          } finally {
+              setIsUploading(false);
+          }
+      }
   };
 
   const handleRegisterSubmit = (e: React.FormEvent) => {
@@ -58,6 +87,15 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
         return;
     }
 
+    // Pharmacy Document Check
+    if (selectedRole === UserRole.PHARMACY && !uploadedDoc) {
+        setError("Please upload your Pharmacy License (Form 20/21) for verification.");
+        setLoading(false);
+        return;
+    }
+
+    const documents = uploadedDoc ? [uploadedDoc] : [];
+
     const newUser: User = {
         id: `${selectedRole === UserRole.DOCTOR ? 'DOC' : 'PH'}-${Date.now()}`,
         name: regName,
@@ -67,7 +105,8 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
         verificationStatus: VerificationStatus.PENDING,
         registrationDate: new Date().toISOString(),
         licenseNumber: regLicense,
-        state: regState
+        state: regState,
+        documents: documents
     };
 
     setTimeout(() => {
@@ -311,6 +350,27 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
                         placeholder={selectedRole === UserRole.PHARMACY ? "e.g. DL-20B-12345" : ""}
                     />
                 </div>
+                
+                {/* Pharmacy Document Upload */}
+                {selectedRole === UserRole.PHARMACY && (
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Upload License Document</label>
+                        <div className="flex items-center space-x-2">
+                            <label className={`cursor-pointer flex items-center justify-center px-4 py-2 border border-slate-300 rounded-md shadow-sm text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                                {isUploading ? <Loader2 className="w-4 h-4 animate-spin mr-2"/> : <Upload className="w-4 h-4 mr-2"/>}
+                                {uploadedDoc ? 'Change File' : 'Choose File'}
+                                <input type="file" accept="image/*,.pdf" className="hidden" onChange={handleFileUpload} />
+                            </label>
+                            {uploadedDoc && (
+                                <span className="text-xs text-green-600 flex items-center">
+                                    <CheckCircle2 className="w-3 h-3 mr-1"/> Uploaded
+                                </span>
+                            )}
+                        </div>
+                        <p className="text-xs text-slate-400 mt-1">Form 20/21 (Max 5MB, PDF/JPG)</p>
+                    </div>
+                )}
+
                 <div>
                     <label className="block text-sm font-medium text-slate-700">State</label>
                     <input
@@ -361,7 +421,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
 
                 <button
                     type="submit"
-                    disabled={loading}
+                    disabled={loading || (selectedRole === UserRole.PHARMACY && !uploadedDoc)}
                     className="w-full flex justify-center items-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none disabled:opacity-70"
                 >
                     {loading ? <Loader2 className="animate-spin h-4 w-4" /> : 'Submit Application'}

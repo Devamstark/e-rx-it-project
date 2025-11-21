@@ -30,6 +30,22 @@ export enum AdminPermission {
   MANAGE_ADMIN_ACCOUNTS = 'MANAGE_ADMIN_ACCOUNTS'
 }
 
+export enum DocumentType {
+  MEDICAL_DEGREE = 'MEDICAL_DEGREE',
+  NMC_REGISTRATION = 'NMC_REGISTRATION',
+  PHARMACY_LICENSE = 'PHARMACY_LICENSE',
+  CLINIC_LICENSE = 'CLINIC_LICENSE',
+  OTHER = 'OTHER'
+}
+
+export interface UserDocument {
+  id: string;
+  type: DocumentType;
+  url: string;
+  name: string;
+  uploadedAt: string;
+}
+
 export interface DbConfig {
     url: string;
     key: string;
@@ -55,6 +71,9 @@ export interface User {
   licenseNumber?: string;
   state?: string;
   
+  // Documents
+  documents?: UserDocument[];
+
   // Pharmacy specific
   inventory?: InventoryItem[];
 
@@ -88,6 +107,7 @@ export interface DoctorProfile {
   state: string;
   pincode: string;
   phone: string;
+  documents?: UserDocument[];
 }
 
 export interface Medicine {

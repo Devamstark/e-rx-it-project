@@ -1,7 +1,9 @@
+
 import React, { useState } from 'react';
-import { DoctorProfile } from '../../types';
+import { DoctorProfile, DocumentType, UserDocument } from '../../types';
 import { MEDICAL_DEGREES, SPECIALTIES, INDIAN_STATES } from '../../constants';
-import { CheckCircle2, AlertCircle, ChevronRight, ChevronLeft, Loader2 } from 'lucide-react';
+import { CheckCircle2, AlertCircle, ChevronRight, ChevronLeft, Loader2, Upload, FileText } from 'lucide-react';
+import { dbService } from '../../services/db';
 
 interface DoctorVerificationProps {
   onComplete: (profile: DoctorProfile) => void;
@@ -13,6 +15,10 @@ export const DoctorVerification: React.FC<DoctorVerificationProps> = ({ onComple
   const [step, setStep] = useState<Step>(1);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  
+  // Document Upload States
+  const [documents, setDocuments] = useState<UserDocument[]>([]);
+  const [uploading, setUploading] = useState<string | null>(null); // tracks which field is uploading
 
   const [formData, setFormData] = useState<DoctorProfile>({
     devxId: '',
@@ -28,6 +34,27 @@ export const DoctorVerification: React.FC<DoctorVerificationProps> = ({ onComple
     phone: ''
   });
 
+  const handleFileUpload = async (file: File, type: DocumentType) => {
+      setUploading(type);
+      try {
+          const url = await dbService.uploadFile(file);
+          const newDoc: UserDocument = {
+              id: `doc-${Date.now()}`,
+              type: type,
+              name: file.name,
+              url: url,
+              uploadedAt: new Date().toISOString()
+          };
+          // Remove old doc of same type if exists, add new
+          setDocuments(prev => [...prev.filter(d => d.type !== type), newDoc]);
+      } catch (err) {
+          console.error(err);
+          alert("File upload failed: " + err);
+      } finally {
+          setUploading(null);
+      }
+  };
+
   const validateStep1 = () => {
     const newErrors: Record<string, string> = {};
     if (!formData.devxId) newErrors.devxId = "DevXWorld Member ID is required";
@@ -35,6 +62,10 @@ export const DoctorVerification: React.FC<DoctorVerificationProps> = ({ onComple
     if (!formData.registrationNumber) newErrors.registrationNumber = "Registration Number is required";
     if (!formData.stateCouncil) newErrors.stateCouncil = "State Council is required";
     
+    // Doc Checks
+    if (!documents.some(d => d.type === DocumentType.MEDICAL_DEGREE)) newErrors.docDegree = "Degree Certificate is required";
+    if (!documents.some(d => d.type === DocumentType.NMC_REGISTRATION)) newErrors.docReg = "NMC/Council Certificate is required";
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -47,6 +78,8 @@ export const DoctorVerification: React.FC<DoctorVerificationProps> = ({ onComple
     if (!formData.state) newErrors.state = "State is required";
     if (!formData.pincode) newErrors.pincode = "Pincode is required";
     if (!formData.phone) newErrors.phone = "Phone is required";
+    
+    // Clinic License is optional but good to have. We won't block.
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -63,11 +96,44 @@ export const DoctorVerification: React.FC<DoctorVerificationProps> = ({ onComple
 
   const handleSubmit = async () => {
      setLoading(true);
-     // Simulate API call
+     // Include docs in profile
+     const finalProfile = { ...formData, documents };
      setTimeout(() => {
          setLoading(false);
-         onComplete(formData);
+         onComplete(finalProfile);
      }, 1500);
+  };
+
+  const FileUploadField = ({ label, type, required = false }: { label: string, type: DocumentType, required?: boolean }) => {
+      const doc = documents.find(d => d.type === type);
+      const isBusy = uploading === type;
+      
+      return (
+          <div className="mb-4">
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                  {label} {required && <span className="text-red-500">*</span>}
+              </label>
+              <div className="flex items-center space-x-3">
+                  <label className={`flex items-center justify-center px-4 py-2 border border-slate-300 rounded-md shadow-sm text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 cursor-pointer ${isBusy ? 'opacity-50 pointer-events-none' : ''}`}>
+                      {isBusy ? <Loader2 className="w-4 h-4 animate-spin mr-2"/> : <Upload className="w-4 h-4 mr-2"/>}
+                      {doc ? 'Replace File' : 'Upload Document'}
+                      <input 
+                        type="file" 
+                        className="hidden" 
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={(e) => e.target.files && e.target.files[0] && handleFileUpload(e.target.files[0], type)}
+                      />
+                  </label>
+                  {doc && (
+                      <span className="flex items-center text-xs text-green-600">
+                          <CheckCircle2 className="w-4 h-4 mr-1"/> {doc.name}
+                      </span>
+                  )}
+              </div>
+              {(type === DocumentType.MEDICAL_DEGREE && errors.docDegree) && <p className="text-xs text-red-500 mt-1">{errors.docDegree}</p>}
+              {(type === DocumentType.NMC_REGISTRATION && errors.docReg) && <p className="text-xs text-red-500 mt-1">{errors.docReg}</p>}
+          </div>
+      );
   };
 
   const InputField = ({ 
@@ -146,10 +212,15 @@ export const DoctorVerification: React.FC<DoctorVerificationProps> = ({ onComple
                         <SelectField label="Medical Degree" name="medicalDegree" options={MEDICAL_DEGREES} required />
                         <SelectField label="Specialty" name="specialty" options={SPECIALTIES} />
                     </div>
+                    
+                    <FileUploadField label="Upload Medical Degree Certificate" type={DocumentType.MEDICAL_DEGREE} required />
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <InputField label="Registration Number" name="registrationNumber" required placeholder="State Council Reg. No." />
                         <SelectField label="State Medical Council" name="stateCouncil" options={INDIAN_STATES} required />
                     </div>
+
+                    <FileUploadField label="Upload NMC/State Registration" type={DocumentType.NMC_REGISTRATION} required />
                 </div>
             </div>
         )}
@@ -158,6 +229,8 @@ export const DoctorVerification: React.FC<DoctorVerificationProps> = ({ onComple
             <div className="animate-in fade-in slide-in-from-right-4 duration-300">
                 <h3 className="text-xl font-medium text-slate-900 mb-6">Clinic & Contact Details</h3>
                 <InputField label="Clinic / Hospital Name" name="clinicName" required />
+                <FileUploadField label="Clinic Establishment License (Optional)" type={DocumentType.CLINIC_LICENSE} />
+                
                 <InputField label="Full Address" name="clinicAddress" required placeholder="Street address, Landmark" />
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <InputField label="City" name="city" required />
@@ -175,13 +248,13 @@ export const DoctorVerification: React.FC<DoctorVerificationProps> = ({ onComple
                  </div>
                  <h3 className="text-2xl font-semibold text-slate-900">Ready to Submit?</h3>
                  <p className="text-slate-600 mt-2 max-w-md mx-auto">
-                    By submitting, you confirm that you are a Registered Medical Practitioner under the NMC Act and all provided details are accurate.
+                    By submitting, you confirm that you are a Registered Medical Practitioner under the NMC Act and all provided details (including uploaded documents) are authentic.
                  </p>
 
                  <div className="mt-8 bg-slate-50 p-4 rounded-lg text-left max-w-md mx-auto text-sm">
-                    <p><span className="font-medium">Name:</span> Dr. {formData.devxId} (Placeholder)</p>
+                    <p><span className="font-medium">Name:</span> Dr. {formData.devxId}</p>
                     <p><span className="font-medium">Degree:</span> {formData.medicalDegree} - {formData.registrationNumber}</p>
-                    <p><span className="font-medium">Clinic:</span> {formData.clinicName}, {formData.city}</p>
+                    <p><span className="font-medium">Documents Attached:</span> {documents.length}</p>
                  </div>
              </div>
         )}

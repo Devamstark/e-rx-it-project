@@ -140,5 +140,43 @@ export const dbService = {
             return;
         }
         await supabase.from('prescriptions').upsert({ id: 'global_prescriptions', data: rx });
+    },
+
+    async uploadFile(file: File): Promise<string> {
+        // Validates file size (5MB limit)
+        if (file.size > 5 * 1024 * 1024) {
+            throw new Error("File size exceeds 5MB limit.");
+        }
+
+        // 1. Try Cloud Upload
+        if (supabase) {
+            try {
+                const fileName = `${Date.now()}_${file.name.replace(/\s/g, '_')}`;
+                const { data, error } = await supabase.storage
+                    .from('documents')
+                    .upload(fileName, file);
+
+                if (error) {
+                    console.warn("Cloud upload failed, falling back to local base64", error);
+                    // Fallback to base64 if bucket doesn't exist or permissions fail
+                } else if (data) {
+                    const { data: publicUrl } = supabase.storage
+                        .from('documents')
+                        .getPublicUrl(data.path);
+                    return publicUrl.publicUrl;
+                }
+            } catch (e) {
+                console.warn("Supabase storage exception", e);
+            }
+        }
+
+        // 2. Local Fallback (Base64 Data URI)
+        // This ensures the feature works even without setting up Supabase Storage buckets
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = error => reject(error);
+        });
     }
 };

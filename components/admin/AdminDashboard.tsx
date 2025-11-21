@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
-import { ShieldAlert, Plus, CheckCircle2, AlertTriangle, Trash2, FileText, Activity, RefreshCw, Ban } from 'lucide-react';
-import { AdminRole, AdminPermission, AdminUser, User, UserRole, VerificationStatus, Prescription } from '../../types';
+import { ShieldAlert, Plus, CheckCircle2, AlertTriangle, Trash2, FileText, Activity, RefreshCw, Ban, File } from 'lucide-react';
+import { AdminRole, AdminPermission, AdminUser, User, UserRole, VerificationStatus, Prescription, UserDocument } from '../../types';
 
 interface AdminDashboardProps {
     users: User[];
@@ -201,13 +201,15 @@ const UserRegistry = ({
     onAction, 
     onTerminate,
     onDelete,
-    onReset 
+    onReset,
+    onViewDocs
 }: { 
     users: User[], 
     onAction: (id: string, status: VerificationStatus) => void,
     onTerminate: (id: string, reason: string) => void,
     onDelete: (id: string) => void,
-    onReset: (id: string) => void
+    onReset: (id: string) => void,
+    onViewDocs: (docs: UserDocument[]) => void
 }) => {
     const [terminateModalUser, setTerminateModalUser] = useState<string | null>(null);
     const [terminationReason, setTerminationReason] = useState("");
@@ -241,6 +243,7 @@ const UserRegistry = ({
                             <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">User</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Role</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Status</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Docs</th>
                             <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">Actions</th>
                         </tr>
                     </thead>
@@ -265,6 +268,15 @@ const UserRegistry = ({
                                         <div className="text-[10px] text-red-500 mt-1 max-w-[150px] truncate" title={u.terminationReason || ''}>
                                             Reason: {u.terminationReason}
                                         </div>
+                                    )}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                    {u.documents && u.documents.length > 0 ? (
+                                        <button onClick={() => onViewDocs(u.documents!)} className="text-indigo-600 hover:underline flex items-center text-xs">
+                                            <FileText className="w-4 h-4 mr-1"/> {u.documents.length} Files
+                                        </button>
+                                    ) : (
+                                        <span className="text-xs text-slate-400">None</span>
                                     )}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
@@ -502,7 +514,7 @@ const AdminStats = ({ users, onFilter }: { users: User[], onFilter: (s: Verifica
     );
 };
 
-const ApprovalQueue = ({ users, onAction }: { users: User[], onAction: (id: string, status: VerificationStatus) => void }) => {
+const ApprovalQueue = ({ users, onAction, onViewDocs }: { users: User[], onAction: (id: string, status: VerificationStatus) => void, onViewDocs: (docs: UserDocument[]) => void }) => {
     const pendingUsers = users.filter(u => u.verificationStatus === VerificationStatus.PENDING && u.role !== UserRole.ADMIN);
 
     if (pendingUsers.length === 0) {
@@ -527,6 +539,7 @@ const ApprovalQueue = ({ users, onAction }: { users: User[], onAction: (id: stri
                         <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Applicant</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Role</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">License Details</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Docs</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Date</th>
                         <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">Decision</th>
                     </tr>
@@ -545,6 +558,13 @@ const ApprovalQueue = ({ users, onAction }: { users: User[], onAction: (id: stri
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
                                 {u.licenseNumber} ({u.state})
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                                {u.documents && u.documents.length > 0 ? (
+                                    <button onClick={() => onViewDocs(u.documents!)} className="text-blue-600 hover:underline flex items-center text-xs font-medium">
+                                        <File className="w-4 h-4 mr-1"/> View
+                                    </button>
+                                ) : <span className="text-slate-400 text-xs">N/A</span>}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
                                 {new Date(u.registrationDate).toLocaleDateString()}
@@ -571,6 +591,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 }) => {
     const [activeView, setActiveView] = useState<'OVERVIEW' | 'REGISTRY' | 'ROLES' | 'ANALYTICS' | 'RX_LOGS'>('OVERVIEW');
     const [filterStatus, setFilterStatus] = useState<VerificationStatus | 'ALL'>('ALL');
+    const [viewDocs, setViewDocs] = useState<UserDocument[] | null>(null);
 
     const displayedUsers = filterStatus === 'ALL' 
         ? users 
@@ -611,7 +632,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <div className="animate-in fade-in duration-300">
                         <h2 className="text-2xl font-bold text-slate-900 mb-6">System Overview</h2>
                         <AdminStats users={users} onFilter={(s) => { setFilterStatus(s); setActiveView('REGISTRY'); }} />
-                        <ApprovalQueue users={users} onAction={onUpdateStatus} />
+                        <ApprovalQueue users={users} onAction={onUpdateStatus} onViewDocs={setViewDocs} />
                     </div>
                 )}
 
@@ -638,6 +659,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             onTerminate={onTerminateUser}
                             onDelete={onDeleteUser}
                             onReset={onResetPassword}
+                            onViewDocs={setViewDocs}
                         />
                     </div>
                 )}
@@ -646,6 +668,46 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                      <RoleManagement />
                 )}
             </div>
+
+            {/* Document Viewer Modal */}
+            {viewDocs && (
+                <div className="fixed inset-0 bg-slate-900/70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+                    <div className="bg-white rounded-lg shadow-2xl w-full max-w-4xl h-[80vh] flex flex-col">
+                        <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+                            <h3 className="font-bold text-slate-800 flex items-center"><FileText className="w-5 h-5 mr-2 text-indigo-600"/> Verified Documents</h3>
+                            <button onClick={() => setViewDocs(null)} className="text-slate-500 hover:text-slate-700 font-bold text-xl">&times;</button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-6 bg-slate-100">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {viewDocs.map((doc, idx) => (
+                                    <div key={idx} className="bg-white p-4 rounded shadow border border-slate-200">
+                                        <div className="flex justify-between items-center mb-2">
+                                            <span className="text-xs font-bold uppercase text-indigo-600 bg-indigo-50 px-2 py-1 rounded">{doc.type.replace('_', ' ')}</span>
+                                            <span className="text-xs text-slate-400">{new Date(doc.uploadedAt).toLocaleDateString()}</span>
+                                        </div>
+                                        <div className="aspect-[4/3] bg-slate-100 rounded overflow-hidden border border-slate-200 flex items-center justify-center group relative">
+                                            {doc.name.toLowerCase().endsWith('.pdf') ? (
+                                                <div className="text-center p-4">
+                                                    <FileText className="w-16 h-16 text-red-500 mx-auto mb-2"/>
+                                                    <p className="text-sm font-medium text-slate-700 truncate max-w-[200px]">{doc.name}</p>
+                                                    <a href={doc.url} target="_blank" rel="noreferrer" className="mt-2 inline-block text-xs text-indigo-600 hover:underline">Download / View PDF</a>
+                                                </div>
+                                            ) : (
+                                                <a href={doc.url} target="_blank" rel="noreferrer">
+                                                    <img src={doc.url} alt={doc.type} className="w-full h-full object-contain hover:scale-105 transition-transform duration-300"/>
+                                                </a>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="px-6 py-4 border-t border-slate-200 bg-white text-right">
+                            <button onClick={() => setViewDocs(null)} className="px-4 py-2 bg-indigo-600 text-white rounded shadow hover:bg-indigo-700 text-sm font-medium">Close Viewer</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
