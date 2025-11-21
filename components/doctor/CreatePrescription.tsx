@@ -7,13 +7,12 @@ import { analyzePrescriptionSafety } from '../../services/geminiService';
 import { COMMON_MEDICINES } from '../../constants';
 
 interface CreatePrescriptionProps {
-  doctorId: string;
-  doctorName: string;
+  currentUser: User; // Full user object to get profile details
   onPrescriptionSent: (rx: Prescription) => void;
   verifiedPharmacies: User[];
 }
 
-type PrescriptionFormData = Omit<Prescription, 'id' | 'date' | 'status' | 'digitalSignatureToken' | 'doctorId' | 'doctorName' | 'pharmacyName'>;
+type PrescriptionFormData = Omit<Prescription, 'id' | 'date' | 'status' | 'digitalSignatureToken' | 'doctorId' | 'doctorName' | 'pharmacyName' | 'doctorDetails'>;
 
 // Helper to translate frequency codes to human readable text
 const getFrequencyDescription = (freq: string): string => {
@@ -33,7 +32,7 @@ const getFrequencyDescription = (freq: string): string => {
     return freq; // Return as is if no match
 };
 
-export const CreatePrescription: React.FC<CreatePrescriptionProps> = ({ doctorId, doctorName, onPrescriptionSent, verifiedPharmacies }) => {
+export const CreatePrescription: React.FC<CreatePrescriptionProps> = ({ currentUser, onPrescriptionSent, verifiedPharmacies }) => {
   const { register, control, handleSubmit, watch, formState: { errors } } = useForm<PrescriptionFormData>({
     defaultValues: {
       medicines: [{ name: '', dosage: '', frequency: '', duration: '', instructions: '' }],
@@ -79,8 +78,22 @@ export const CreatePrescription: React.FC<CreatePrescriptionProps> = ({ doctorId
     const newRx: Prescription = {
         ...data,
         id: '', // Placeholder, will be overwritten by App.tsx
-        doctorId,
-        doctorName,
+        doctorId: currentUser.id,
+        doctorName: currentUser.name,
+        doctorDetails: {
+            name: currentUser.name,
+            qualifications: currentUser.qualifications || 'MBBS',
+            registrationNumber: currentUser.licenseNumber || currentUser.registrationNumber || '',
+            nmrUid: currentUser.nmrUid,
+            stateCouncil: currentUser.stateCouncil || currentUser.state || '',
+            clinicName: currentUser.clinicName || 'Clinic',
+            clinicAddress: currentUser.clinicAddress || '',
+            city: currentUser.city || '',
+            state: currentUser.state || '',
+            pincode: currentUser.pincode || '',
+            phone: currentUser.phone || '',
+            email: currentUser.email
+        },
         pharmacyId: selectedPharmacyId,
         pharmacyName: pharmacy ? pharmacy.name : 'Unassigned',
         date: new Date().toISOString(),
@@ -144,7 +157,6 @@ export const CreatePrescription: React.FC<CreatePrescriptionProps> = ({ doctorId
 
             <div className="space-y-4">
                 {fields.map((field, index) => {
-                    // Get current values for this specific row to generate preview
                     const currentDosage = medicines[index]?.dosage || '';
                     const currentFreq = medicines[index]?.frequency || '';
                     const currentDur = medicines[index]?.duration || '';

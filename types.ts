@@ -68,11 +68,24 @@ export interface User {
   role: UserRole;
   verificationStatus: VerificationStatus;
   registrationDate: string;
+  
+  // Common License info
   licenseNumber?: string;
   state?: string;
   
   // Documents
   documents?: UserDocument[];
+
+  // Doctor Specific Extended Profile
+  qualifications?: string; // e.g. MBBS, MD
+  nmrUid?: string; // National Medical Register UID
+  clinicName?: string;
+  clinicAddress?: string;
+  city?: string;
+  pincode?: string;
+  phone?: string;
+  fax?: string;
+  stateCouncil?: string;
 
   // Pharmacy specific
   inventory?: InventoryItem[];
@@ -97,8 +110,10 @@ export interface AdminUser {
 
 export interface DoctorProfile {
   devxId: string;
-  medicalDegree: string;
+  medicalDegree: string; // Primary degree (dropdown)
+  qualifications: string; // Full string: MBBS, MD (Ent)
   registrationNumber: string;
+  nmrUid: string; // National Medical Register UID
   stateCouncil: string;
   specialty?: string;
   clinicName: string;
@@ -107,6 +122,7 @@ export interface DoctorProfile {
   state: string;
   pincode: string;
   phone: string;
+  fax?: string;
   documents?: UserDocument[];
 }
 
@@ -118,10 +134,27 @@ export interface Medicine {
   instructions: string; // e.g., After food
 }
 
+// Snapshot of doctor details at the time of prescription
+export interface DoctorDetailsSnapshot {
+  name: string;
+  qualifications: string;
+  registrationNumber: string;
+  nmrUid?: string;
+  stateCouncil: string;
+  clinicName: string;
+  clinicAddress: string;
+  city: string;
+  state: string;
+  pincode: string;
+  phone: string;
+  email: string;
+}
+
 export interface Prescription {
   id: string;
   doctorId: string;
-  doctorName: string;
+  doctorName: string; // Kept for backward compatibility/searches
+  doctorDetails?: DoctorDetailsSnapshot; // Full snapshot
   patientName: string;
   patientAge: number;
   patientGender: 'Male' | 'Female' | 'Other';

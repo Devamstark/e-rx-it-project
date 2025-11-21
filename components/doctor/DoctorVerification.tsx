@@ -18,12 +18,14 @@ export const DoctorVerification: React.FC<DoctorVerificationProps> = ({ onComple
   
   // Document Upload States
   const [documents, setDocuments] = useState<UserDocument[]>([]);
-  const [uploading, setUploading] = useState<string | null>(null); // tracks which field is uploading
+  const [uploading, setUploading] = useState<string | null>(null); 
 
   const [formData, setFormData] = useState<DoctorProfile>({
     devxId: '',
     medicalDegree: '',
+    qualifications: '',
     registrationNumber: '',
+    nmrUid: '',
     stateCouncil: '',
     specialty: '',
     clinicName: '',
@@ -31,7 +33,8 @@ export const DoctorVerification: React.FC<DoctorVerificationProps> = ({ onComple
     city: '',
     state: '',
     pincode: '',
-    phone: ''
+    phone: '',
+    fax: ''
   });
 
   const handleFileUpload = async (file: File, type: DocumentType) => {
@@ -45,11 +48,10 @@ export const DoctorVerification: React.FC<DoctorVerificationProps> = ({ onComple
               url: url,
               uploadedAt: new Date().toISOString()
           };
-          // Remove old doc of same type if exists, add new
           setDocuments(prev => [...prev.filter(d => d.type !== type), newDoc]);
-      } catch (err) {
+      } catch (err: any) {
           console.error(err);
-          alert("File upload failed: " + err);
+          alert("File upload failed: " + err.message);
       } finally {
           setUploading(null);
       }
@@ -58,8 +60,10 @@ export const DoctorVerification: React.FC<DoctorVerificationProps> = ({ onComple
   const validateStep1 = () => {
     const newErrors: Record<string, string> = {};
     if (!formData.devxId) newErrors.devxId = "DevXWorld Member ID is required";
-    if (!formData.medicalDegree) newErrors.medicalDegree = "Medical Degree is required";
+    if (!formData.medicalDegree) newErrors.medicalDegree = "Primary Degree is required";
+    if (!formData.qualifications) newErrors.qualifications = "Full Qualifications are required";
     if (!formData.registrationNumber) newErrors.registrationNumber = "Registration Number is required";
+    if (!formData.nmrUid) newErrors.nmrUid = "NMR UID is required (NMC)";
     if (!formData.stateCouncil) newErrors.stateCouncil = "State Council is required";
     
     // Doc Checks
@@ -79,8 +83,6 @@ export const DoctorVerification: React.FC<DoctorVerificationProps> = ({ onComple
     if (!formData.pincode) newErrors.pincode = "Pincode is required";
     if (!formData.phone) newErrors.phone = "Phone is required";
     
-    // Clinic License is optional but good to have. We won't block.
-    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -96,7 +98,6 @@ export const DoctorVerification: React.FC<DoctorVerificationProps> = ({ onComple
 
   const handleSubmit = async () => {
      setLoading(true);
-     // Include docs in profile
      const finalProfile = { ...formData, documents };
      setTimeout(() => {
          setLoading(false);
@@ -149,7 +150,7 @@ export const DoctorVerification: React.FC<DoctorVerificationProps> = ({ onComple
       </label>
       <input
         type={type}
-        value={formData[name]}
+        value={formData[name] as string}
         onChange={(e) => {
             setFormData({...formData, [name]: e.target.value});
             if(errors[name]) setErrors({...errors, [name]: ''});
@@ -172,7 +173,7 @@ export const DoctorVerification: React.FC<DoctorVerificationProps> = ({ onComple
         {label} {required && <span className="text-red-500">*</span>}
       </label>
       <select
-        value={formData[name]}
+        value={formData[name] as string}
         onChange={(e) => {
             setFormData({...formData, [name]: e.target.value});
             if(errors[name]) setErrors({...errors, [name]: ''});
@@ -187,7 +188,7 @@ export const DoctorVerification: React.FC<DoctorVerificationProps> = ({ onComple
   );
 
   return (
-    <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
+    <div className="max-w-3xl mx-auto bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
       {/* Progress Bar */}
       <div className="bg-slate-50 px-6 py-4 border-b border-slate-200">
         <div className="flex items-center justify-between">
@@ -209,16 +210,19 @@ export const DoctorVerification: React.FC<DoctorVerificationProps> = ({ onComple
                 <div className="grid grid-cols-1 gap-y-2">
                     <InputField label="DevXWorld Member ID" name="devxId" required placeholder="e.g. DVX-998877" />
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <SelectField label="Medical Degree" name="medicalDegree" options={MEDICAL_DEGREES} required />
-                        <SelectField label="Specialty" name="specialty" options={SPECIALTIES} />
+                        <SelectField label="Primary Degree" name="medicalDegree" options={MEDICAL_DEGREES} required />
+                        <InputField label="Full Qualifications" name="qualifications" required placeholder="e.g. MBBS, MD (General Medicine), DNB" />
                     </div>
                     
                     <FileUploadField label="Upload Medical Degree Certificate" type={DocumentType.MEDICAL_DEGREE} required />
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <InputField label="Registration Number" name="registrationNumber" required placeholder="State Council Reg. No." />
-                        <SelectField label="State Medical Council" name="stateCouncil" options={INDIAN_STATES} required />
+                        <InputField label="NMC UID (NMR)" name="nmrUid" required placeholder="National Medical Register ID" />
                     </div>
+                    
+                    <SelectField label="State Medical Council" name="stateCouncil" options={INDIAN_STATES} required />
+                    <SelectField label="Specialty" name="specialty" options={SPECIALTIES} />
 
                     <FileUploadField label="Upload NMC/State Registration" type={DocumentType.NMC_REGISTRATION} required />
                 </div>
@@ -237,7 +241,10 @@ export const DoctorVerification: React.FC<DoctorVerificationProps> = ({ onComple
                     <SelectField label="State" name="state" options={INDIAN_STATES} required />
                     <InputField label="Pincode" name="pincode" required />
                 </div>
-                <InputField label="Official Phone Number" name="phone" required placeholder="+91" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <InputField label="Official Phone Number" name="phone" required placeholder="+91" />
+                    <InputField label="Fax Number (Optional)" name="fax" placeholder="Optional" />
+                </div>
             </div>
         )}
 
@@ -251,9 +258,11 @@ export const DoctorVerification: React.FC<DoctorVerificationProps> = ({ onComple
                     By submitting, you confirm that you are a Registered Medical Practitioner under the NMC Act and all provided details (including uploaded documents) are authentic.
                  </p>
 
-                 <div className="mt-8 bg-slate-50 p-4 rounded-lg text-left max-w-md mx-auto text-sm">
+                 <div className="mt-8 bg-slate-50 p-4 rounded-lg text-left max-w-md mx-auto text-sm space-y-1">
                     <p><span className="font-medium">Name:</span> Dr. {formData.devxId}</p>
-                    <p><span className="font-medium">Degree:</span> {formData.medicalDegree} - {formData.registrationNumber}</p>
+                    <p><span className="font-medium">Qualification:</span> {formData.qualifications}</p>
+                    <p><span className="font-medium">Reg No:</span> {formData.registrationNumber} (NMR: {formData.nmrUid})</p>
+                    <p><span className="font-medium">Clinic:</span> {formData.clinicName}</p>
                     <p><span className="font-medium">Documents Attached:</span> {documents.length}</p>
                  </div>
              </div>

@@ -19,6 +19,11 @@ export const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
   isPharmacy = false 
 }) => {
 
+  // Use snapshot details if available, else fallback to legacy/simple data
+  const docName = prescription.doctorDetails?.name || prescription.doctorName;
+  const docQual = prescription.doctorDetails?.qualifications || 'Registered Medical Practitioner';
+  const clinicName = prescription.doctorDetails?.clinicName || 'DevXWorld Network';
+
   const handlePrint = () => {
     const printWindow = window.open('', '_blank');
     if (printWindow) {
@@ -29,10 +34,12 @@ export const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
           <head>
             <title>Print Prescription - ${prescription.id}</title>
             <script src="https://cdn.tailwindcss.com"></script>
+            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Dancing+Script:wght@700&display=swap" rel="stylesheet">
             <style>
               @media print {
                 body { -webkit-print-color-adjust: exact; }
               }
+              .font-script { font-family: 'Dancing Script', cursive; }
             </style>
           </head>
           <body class="bg-white">
@@ -48,18 +55,16 @@ export const PrescriptionModal: React.FC<PrescriptionModalProps> = ({
   };
 
   const handleShare = () => {
-    const text = `*DevXWorld e-Prescription*
-Dr. ${prescription.doctorName}
-Patient: ${prescription.patientName} (${prescription.patientAge}Y, ${prescription.patientGender})
-Diagnosis: ${prescription.diagnosis}
+    const text = `*${clinicName}*
+Dr. ${docName} (${docQual})
+
+*Rx for:* ${prescription.patientName} (${prescription.patientAge}Y)
+*Diagnosis:* ${prescription.diagnosis}
 
 *Medicines:*
-${prescription.medicines.map(m => `- ${m.name} (${m.dosage}) | ${m.frequency} | ${m.duration}`).join('\n')}
+${prescription.medicines.map(m => `- ${m.name} (${m.dosage}) | ${m.frequency}`).join('\n')}
 
-*Advice:* ${prescription.advice || 'None'}
-
-Rx ID: ${prescription.id}
-Date: ${new Date(prescription.date).toLocaleDateString()}
+*Link:* https://devxworld.erx/track/${prescription.id}
     `.trim();
 
     const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
@@ -105,8 +110,9 @@ Date: ${new Date(prescription.date).toLocaleDateString()}
           <div className="flex flex-col sm:flex-row justify-between gap-6 p-4 bg-slate-50 rounded-lg border border-slate-100">
             <div>
               <p className="text-xs font-bold text-slate-400 uppercase mb-1">Prescribed By</p>
-              <p className="text-lg font-bold text-slate-800">{prescription.doctorName}</p>
-              <p className="text-sm text-slate-500">Registered Medical Practitioner</p>
+              <p className="text-lg font-bold text-slate-800">Dr. {docName}</p>
+              <p className="text-sm font-medium text-indigo-700">{docQual}</p>
+              <p className="text-xs text-slate-500 mt-1">{clinicName}</p>
             </div>
             <div className="sm:text-right">
               <p className="text-xs font-bold text-slate-400 uppercase mb-1">Patient Details</p>
@@ -166,7 +172,7 @@ Date: ${new Date(prescription.date).toLocaleDateString()}
 
           {/* Footer Info */}
           <div className="text-center sm:text-left pt-4 border-t border-slate-100">
-             <p className="text-xs text-slate-400 font-mono">Signature Token: {prescription.digitalSignatureToken}</p>
+             <p className="text-xs text-slate-400 font-mono">Digital Signature: {prescription.digitalSignatureToken}</p>
           </div>
         </div>
 

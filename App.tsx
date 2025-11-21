@@ -156,7 +156,28 @@ function App() {
   };
 
   const handleDoctorVerificationComplete = (profile: DoctorProfile) => {
-      console.log("Verification Submitted:", profile);
+      // Merge the profile data into the User object
+      if (!currentUser) return;
+
+      const updatedUser: User = {
+          ...currentUser,
+          verificationStatus: VerificationStatus.PENDING, // Set back to pending for admin review
+          // Map profile fields to User fields for persistence
+          licenseNumber: profile.registrationNumber,
+          state: profile.state,
+          qualifications: profile.qualifications,
+          nmrUid: profile.nmrUid,
+          clinicName: profile.clinicName,
+          clinicAddress: profile.clinicAddress,
+          city: profile.city,
+          pincode: profile.pincode,
+          phone: profile.phone,
+          fax: profile.fax,
+          stateCouncil: profile.stateCouncil,
+          documents: profile.documents
+      };
+      
+      handleUpdateUser(updatedUser);
       alert("Details submitted to Admin for re-verification.");
   };
 
