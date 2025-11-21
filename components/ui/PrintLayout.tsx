@@ -14,11 +14,13 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ rx }) => {
       clinicName: 'DevXWorld Network',
       clinicAddress: '',
       phone: '',
+      fax: '',
       city: '',
       state: '',
       pincode: '',
       nmrUid: '',
-      stateCouncil: ''
+      stateCouncil: '',
+      specialty: ''
   };
 
   return (
@@ -30,15 +32,22 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ rx }) => {
             <div className="text-sm text-slate-700 space-y-0.5">
                 <p className="font-medium">{doc.clinicAddress}</p>
                 <p>{doc.city}, {doc.state} - {doc.pincode}</p>
-                <p className="font-bold mt-1">Phone: {doc.phone}</p>
+                <div className="flex gap-4 mt-1">
+                    {doc.phone && <p className="font-bold">Tel: {doc.phone}</p>}
+                    {doc.fax && <p>Fax: {doc.fax}</p>}
+                </div>
             </div>
         </div>
         <div className="w-1/2 text-right">
             <h2 className="text-xl font-bold text-slate-800">Dr. {doc.name}</h2>
             <p className="text-sm font-bold text-indigo-700 uppercase">{doc.qualifications}</p>
-            <p className="text-xs text-slate-600 mt-1">Reg No: <span className="font-semibold">{doc.registrationNumber}</span></p>
-            <p className="text-xs text-slate-600">NMR UID: <span className="font-semibold">{doc.nmrUid || 'N/A'}</span></p>
-            <p className="text-xs text-slate-500">{doc.stateCouncil}</p>
+            {doc.specialty && <p className="text-xs font-bold text-slate-500 uppercase">{doc.specialty}</p>}
+            
+            <div className="mt-2 space-y-0.5">
+                <p className="text-xs text-slate-600">Reg No: <span className="font-semibold">{doc.registrationNumber}</span></p>
+                <p className="text-xs text-slate-600">NMR UID: <span className="font-semibold">{doc.nmrUid || 'N/A'}</span></p>
+                <p className="text-[10px] text-slate-400">{doc.stateCouncil}</p>
+            </div>
         </div>
       </div>
 
@@ -132,6 +141,7 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ rx }) => {
              <div className="border-t border-slate-400 pt-1">
                  <p className="text-sm font-bold uppercase text-slate-800">Dr. {doc.name}</p>
                  <p className="text-[10px] text-slate-500">Reg No: {doc.registrationNumber}</p>
+                 <p className="text-[10px] text-slate-500">NMR: {doc.nmrUid}</p>
              </div>
         </div>
       </div>

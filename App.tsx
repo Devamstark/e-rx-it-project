@@ -167,6 +167,7 @@ function App() {
           state: profile.state,
           qualifications: profile.qualifications,
           nmrUid: profile.nmrUid,
+          specialty: profile.specialty,
           clinicName: profile.clinicName,
           clinicAddress: profile.clinicAddress,
           city: profile.city,

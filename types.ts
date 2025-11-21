@@ -86,6 +86,7 @@ export interface User {
   phone?: string;
   fax?: string;
   stateCouncil?: string;
+  specialty?: string;
 
   // Pharmacy specific
   inventory?: InventoryItem[];
@@ -139,7 +140,7 @@ export interface DoctorDetailsSnapshot {
   name: string;
   qualifications: string;
   registrationNumber: string;
-  nmrUid?: string;
+  nmrUid: string;
   stateCouncil: string;
   clinicName: string;
   clinicAddress: string;
@@ -147,7 +148,9 @@ export interface DoctorDetailsSnapshot {
   state: string;
   pincode: string;
   phone: string;
+  fax?: string;
   email: string;
+  specialty?: string;
 }
 
 export interface Prescription {

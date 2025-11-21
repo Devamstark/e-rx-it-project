@@ -82,23 +82,25 @@ export const CreatePrescription: React.FC<CreatePrescriptionProps> = ({ currentU
         doctorName: currentUser.name,
         doctorDetails: {
             name: currentUser.name,
-            qualifications: currentUser.qualifications || 'MBBS',
-            registrationNumber: currentUser.licenseNumber || currentUser.registrationNumber || '',
-            nmrUid: currentUser.nmrUid,
+            qualifications: currentUser.qualifications || 'MBBS (Registered Medical Practitioner)',
+            registrationNumber: currentUser.licenseNumber || currentUser.registrationNumber || 'Pending',
+            nmrUid: currentUser.nmrUid || 'N/A',
+            specialty: currentUser.specialty,
             stateCouncil: currentUser.stateCouncil || currentUser.state || '',
-            clinicName: currentUser.clinicName || 'Clinic',
+            clinicName: currentUser.clinicName || 'DevXWorld Digital Clinic',
             clinicAddress: currentUser.clinicAddress || '',
             city: currentUser.city || '',
             state: currentUser.state || '',
             pincode: currentUser.pincode || '',
             phone: currentUser.phone || '',
+            fax: currentUser.fax,
             email: currentUser.email
         },
         pharmacyId: selectedPharmacyId,
         pharmacyName: pharmacy ? pharmacy.name : 'Unassigned',
         date: new Date().toISOString(),
         status: 'ISSUED',
-        digitalSignatureToken: `SIG-${Math.random().toString(36).substring(7)}`
+        digitalSignatureToken: `SIG-${Math.random().toString(36).substring(7).toUpperCase()}`
     };
 
     onPrescriptionSent(newRx);

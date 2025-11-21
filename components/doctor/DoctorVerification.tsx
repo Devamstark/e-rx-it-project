@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { DoctorProfile, DocumentType, UserDocument } from '../../types';
 import { MEDICAL_DEGREES, SPECIALTIES, INDIAN_STATES } from '../../constants';
-import { CheckCircle2, AlertCircle, ChevronRight, ChevronLeft, Loader2, Upload, FileText } from 'lucide-react';
+import { CheckCircle2, AlertCircle, ChevronRight, ChevronLeft, Loader2, Upload, FileText, Building2, UserSquare2 } from 'lucide-react';
 import { dbService } from '../../services/db';
 
 interface DoctorVerificationProps {
@@ -110,11 +110,11 @@ export const DoctorVerification: React.FC<DoctorVerificationProps> = ({ onComple
       const isBusy = uploading === type;
       
       return (
-          <div className="mb-4">
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+          <div className="mb-4 p-4 bg-slate-50 rounded-md border border-slate-200">
+              <label className="block text-sm font-bold text-slate-700 mb-2">
                   {label} {required && <span className="text-red-500">*</span>}
               </label>
-              <div className="flex items-center space-x-3">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                   <label className={`flex items-center justify-center px-4 py-2 border border-slate-300 rounded-md shadow-sm text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 cursor-pointer ${isBusy ? 'opacity-50 pointer-events-none' : ''}`}>
                       {isBusy ? <Loader2 className="w-4 h-4 animate-spin mr-2"/> : <Upload className="w-4 h-4 mr-2"/>}
                       {doc ? 'Replace File' : 'Upload Document'}
@@ -125,14 +125,16 @@ export const DoctorVerification: React.FC<DoctorVerificationProps> = ({ onComple
                         onChange={(e) => e.target.files && e.target.files[0] && handleFileUpload(e.target.files[0], type)}
                       />
                   </label>
-                  {doc && (
-                      <span className="flex items-center text-xs text-green-600">
+                  {doc ? (
+                      <span className="flex items-center text-sm text-green-600 font-medium">
                           <CheckCircle2 className="w-4 h-4 mr-1"/> {doc.name}
                       </span>
+                  ) : (
+                      <span className="text-xs text-slate-500 italic">PDF, JPG, or PNG (Max 5MB)</span>
                   )}
               </div>
-              {(type === DocumentType.MEDICAL_DEGREE && errors.docDegree) && <p className="text-xs text-red-500 mt-1">{errors.docDegree}</p>}
-              {(type === DocumentType.NMC_REGISTRATION && errors.docReg) && <p className="text-xs text-red-500 mt-1">{errors.docReg}</p>}
+              {(type === DocumentType.MEDICAL_DEGREE && errors.docDegree) && <p className="text-xs text-red-500 mt-1 font-bold">{errors.docDegree}</p>}
+              {(type === DocumentType.NMC_REGISTRATION && errors.docReg) && <p className="text-xs text-red-500 mt-1 font-bold">{errors.docReg}</p>}
           </div>
       );
   };
@@ -206,24 +208,30 @@ export const DoctorVerification: React.FC<DoctorVerificationProps> = ({ onComple
       <div className="p-6 sm:p-8">
         {step === 1 && (
             <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                <h3 className="text-xl font-medium text-slate-900 mb-6">Professional Information</h3>
+                <div className="flex items-center mb-6 pb-2 border-b border-slate-100">
+                    <UserSquare2 className="w-6 h-6 text-teal-600 mr-2"/>
+                    <h3 className="text-xl font-medium text-slate-900">Professional Information</h3>
+                </div>
+                
                 <div className="grid grid-cols-1 gap-y-2">
                     <InputField label="DevXWorld Member ID" name="devxId" required placeholder="e.g. DVX-998877" />
+                    
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <SelectField label="Primary Degree" name="medicalDegree" options={MEDICAL_DEGREES} required />
-                        <InputField label="Full Qualifications" name="qualifications" required placeholder="e.g. MBBS, MD (General Medicine), DNB" />
+                        <InputField label="Specialty" name="specialty" placeholder="e.g. Cardiology, ENT" />
                     </div>
+
+                    <InputField label="Full Qualifications (for Letterhead)" name="qualifications" required placeholder="e.g. MBBS, MD (General Medicine), DNB" />
                     
                     <FileUploadField label="Upload Medical Degree Certificate" type={DocumentType.MEDICAL_DEGREE} required />
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <InputField label="Registration Number" name="registrationNumber" required placeholder="State Council Reg. No." />
-                        <InputField label="NMC UID (NMR)" name="nmrUid" required placeholder="National Medical Register ID" />
+                        <InputField label="State Reg. Number" name="registrationNumber" required placeholder="e.g. MMC/2015/1234" />
+                        <InputField label="NMC UID (National Medical Register)" name="nmrUid" required placeholder="e.g. NMR-2345" />
                     </div>
                     
                     <SelectField label="State Medical Council" name="stateCouncil" options={INDIAN_STATES} required />
-                    <SelectField label="Specialty" name="specialty" options={SPECIALTIES} />
-
+                    
                     <FileUploadField label="Upload NMC/State Registration" type={DocumentType.NMC_REGISTRATION} required />
                 </div>
             </div>
@@ -231,18 +239,22 @@ export const DoctorVerification: React.FC<DoctorVerificationProps> = ({ onComple
 
         {step === 2 && (
             <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                <h3 className="text-xl font-medium text-slate-900 mb-6">Clinic & Contact Details</h3>
-                <InputField label="Clinic / Hospital Name" name="clinicName" required />
+                <div className="flex items-center mb-6 pb-2 border-b border-slate-100">
+                    <Building2 className="w-6 h-6 text-teal-600 mr-2"/>
+                    <h3 className="text-xl font-medium text-slate-900">Clinic & Contact Details</h3>
+                </div>
+
+                <InputField label="Clinic / Hospital Name" name="clinicName" required placeholder="e.g. City Care Clinic" />
                 <FileUploadField label="Clinic Establishment License (Optional)" type={DocumentType.CLINIC_LICENSE} />
                 
-                <InputField label="Full Address" name="clinicAddress" required placeholder="Street address, Landmark" />
+                <InputField label="Full Clinic Address" name="clinicAddress" required placeholder="Street address, Floor, Landmark" />
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <InputField label="City" name="city" required />
                     <SelectField label="State" name="state" options={INDIAN_STATES} required />
                     <InputField label="Pincode" name="pincode" required />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <InputField label="Official Phone Number" name="phone" required placeholder="+91" />
+                    <InputField label="Official Phone Number" name="phone" required placeholder="+91 98765 43210" />
                     <InputField label="Fax Number (Optional)" name="fax" placeholder="Optional" />
                 </div>
             </div>
@@ -258,12 +270,15 @@ export const DoctorVerification: React.FC<DoctorVerificationProps> = ({ onComple
                     By submitting, you confirm that you are a Registered Medical Practitioner under the NMC Act and all provided details (including uploaded documents) are authentic.
                  </p>
 
-                 <div className="mt-8 bg-slate-50 p-4 rounded-lg text-left max-w-md mx-auto text-sm space-y-1">
-                    <p><span className="font-medium">Name:</span> Dr. {formData.devxId}</p>
-                    <p><span className="font-medium">Qualification:</span> {formData.qualifications}</p>
-                    <p><span className="font-medium">Reg No:</span> {formData.registrationNumber} (NMR: {formData.nmrUid})</p>
-                    <p><span className="font-medium">Clinic:</span> {formData.clinicName}</p>
-                    <p><span className="font-medium">Documents Attached:</span> {documents.length}</p>
+                 <div className="mt-8 bg-slate-50 p-4 rounded-lg text-left max-w-md mx-auto text-sm space-y-2 border border-slate-200 shadow-sm">
+                    <p className="border-b border-slate-200 pb-2 mb-2 font-bold text-slate-800">Review Details</p>
+                    <p><span className="font-medium text-slate-500">Name:</span> Dr. {formData.devxId}</p>
+                    <p><span className="font-medium text-slate-500">Qualification:</span> {formData.qualifications}</p>
+                    <p><span className="font-medium text-slate-500">Reg No:</span> {formData.registrationNumber}</p>
+                    <p><span className="font-medium text-slate-500">NMR UID:</span> {formData.nmrUid}</p>
+                    <p><span className="font-medium text-slate-500">Clinic:</span> {formData.clinicName}</p>
+                    <p><span className="font-medium text-slate-500">Address:</span> {formData.clinicAddress}, {formData.city}</p>
+                    <p><span className="font-medium text-slate-500">Documents:</span> {documents.length} Attached</p>
                  </div>
              </div>
         )}
