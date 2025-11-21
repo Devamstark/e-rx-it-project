@@ -83,7 +83,7 @@ export const CreatePrescription: React.FC<CreatePrescriptionProps> = ({ currentU
         doctorDetails: {
             name: currentUser.name,
             qualifications: currentUser.qualifications || 'MBBS (Registered Medical Practitioner)',
-            registrationNumber: currentUser.licenseNumber || currentUser.registrationNumber || 'Pending',
+            registrationNumber: currentUser.licenseNumber || 'Pending',
             nmrUid: currentUser.nmrUid || 'N/A',
             specialty: currentUser.specialty,
             stateCouncil: currentUser.stateCouncil || currentUser.state || '',

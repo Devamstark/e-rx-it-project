@@ -79,8 +79,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
       <div className="lg:col-span-9">
         {view === 'NEW_RX' ? (
             <CreatePrescription 
-                doctorId={currentUser.id}
-                doctorName={currentUser.name} 
+                currentUser={currentUser}
                 onPrescriptionSent={(rx) => { onCreatePrescription(rx); setView('HISTORY'); }}
                 verifiedPharmacies={verifiedPharmacies}
             />
