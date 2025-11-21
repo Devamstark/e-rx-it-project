@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { Medicine, Prescription, User } from '../../types';
-import { Plus, Trash2, Send, BrainCircuit, FileText, AlertTriangle } from 'lucide-react';
+import { Plus, Trash2, Send, BrainCircuit, FileText, AlertTriangle, Info } from 'lucide-react';
 import { analyzePrescriptionSafety } from '../../services/geminiService';
 import { COMMON_MEDICINES } from '../../constants';
 
@@ -14,6 +14,24 @@ interface CreatePrescriptionProps {
 }
 
 type PrescriptionFormData = Omit<Prescription, 'id' | 'date' | 'status' | 'digitalSignatureToken' | 'doctorId' | 'doctorName' | 'pharmacyName'>;
+
+// Helper to translate frequency codes to human readable text
+const getFrequencyDescription = (freq: string): string => {
+    if (!freq) return '';
+    const clean = freq.trim().toUpperCase();
+    
+    // Common Patterns
+    if (clean === '1-0-0' || clean === '1' || clean === 'OD') return 'Once a day (Morning)';
+    if (clean === '0-0-1' || clean === 'HS') return 'Once a day (Night)';
+    if (clean === '1-0-1' || clean === 'BD' || clean === 'BID') return 'Twice a day (Morning, Night)';
+    if (clean === '1-1-1' || clean === 'TDS' || clean === 'TID') return 'Thrice a day';
+    if (clean === '1-1-1-1' || clean === 'QID') return 'Four times a day';
+    if (clean === 'SOS') return 'As needed';
+    if (clean === 'STAT') return 'Immediately';
+    if (clean === '0-1-0') return 'Once a day (Afternoon)';
+    
+    return freq; // Return as is if no match
+};
 
 export const CreatePrescription: React.FC<CreatePrescriptionProps> = ({ doctorId, doctorName, onPrescriptionSent, verifiedPharmacies }) => {
   const { register, control, handleSubmit, watch, formState: { errors } } = useForm<PrescriptionFormData>({
@@ -117,34 +135,66 @@ export const CreatePrescription: React.FC<CreatePrescriptionProps> = ({ doctorId
                 {COMMON_MEDICINES.map(med => <option key={med} value={med} />)}
             </datalist>
 
-            <div className="space-y-3">
-                {fields.map((field, index) => (
-                    <div key={field.id} className="grid grid-cols-12 gap-2 items-start bg-slate-50 p-3 rounded-md border border-slate-200">
-                        <div className="col-span-4">
-                            <input 
-                              {...register(`medicines.${index}.name` as const, { required: true })} 
-                              list="common-medicines"
-                              placeholder="Medicine Name" 
-                              className="w-full text-sm border-slate-300 rounded border p-1.5" 
-                            />
+            <div className="space-y-4">
+                {fields.map((field, index) => {
+                    // Get current values for this specific row to generate preview
+                    const currentDosage = medicines[index]?.dosage || '';
+                    const currentFreq = medicines[index]?.frequency || '';
+                    const currentDur = medicines[index]?.duration || '';
+                    const freqDesc = getFrequencyDescription(currentFreq);
+                    
+                    const fullDirection = `${currentDosage ? currentDosage + ', ' : ''}${freqDesc || currentFreq || '...'}${currentDur ? ' for ' + currentDur : ''}`;
+
+                    return (
+                        <div key={field.id} className="bg-slate-50 p-4 rounded-md border border-slate-200">
+                            <div className="grid grid-cols-12 gap-2 items-start">
+                                <div className="col-span-12 sm:col-span-4">
+                                    <label className="text-xs font-bold text-slate-500 mb-1 block sm:hidden">Medicine</label>
+                                    <input 
+                                      {...register(`medicines.${index}.name` as const, { required: true })} 
+                                      list="common-medicines"
+                                      placeholder="Medicine Name" 
+                                      className="w-full text-sm border-slate-300 rounded border p-2" 
+                                    />
+                                </div>
+                                <div className="col-span-4 sm:col-span-2">
+                                     <label className="text-xs font-bold text-slate-500 mb-1 block sm:hidden">Dose</label>
+                                     <input {...register(`medicines.${index}.dosage` as const)} placeholder="Dose (500mg)" className="w-full text-sm border-slate-300 rounded border p-2" />
+                                </div>
+                                <div className="col-span-4 sm:col-span-2">
+                                     <label className="text-xs font-bold text-slate-500 mb-1 block sm:hidden">Freq</label>
+                                     <input 
+                                        {...register(`medicines.${index}.frequency` as const)} 
+                                        placeholder="Freq (1-0-1)" 
+                                        className="w-full text-sm border-slate-300 rounded border p-2" 
+                                        title="Use codes like 1-0-1, BD, OD"
+                                     />
+                                </div>
+                                <div className="col-span-4 sm:col-span-2">
+                                     <label className="text-xs font-bold text-slate-500 mb-1 block sm:hidden">Duration</label>
+                                     <input {...register(`medicines.${index}.duration` as const)} placeholder="Dur (5 days)" className="w-full text-sm border-slate-300 rounded border p-2" />
+                                </div>
+                                <div className="col-span-12 sm:col-span-1 flex justify-end sm:mt-1">
+                                    <button type="button" onClick={() => remove(index)} className="text-red-500 hover:text-red-700 p-2 bg-white rounded border border-slate-200"><Trash2 className="w-4 h-4"/></button>
+                                </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-12 gap-4 mt-2">
+                                <div className="col-span-12 sm:col-span-6">
+                                    <input {...register(`medicines.${index}.instructions` as const)} placeholder="Special Instructions (e.g. After food)" className="w-full text-xs border-slate-300 rounded border p-2 text-slate-600 bg-white" />
+                                </div>
+                                <div className="col-span-12 sm:col-span-6 flex items-center">
+                                    <div className="bg-indigo-50 border border-indigo-100 rounded px-3 py-1.5 w-full flex items-start">
+                                        <Info className="w-4 h-4 text-indigo-500 mr-2 mt-0.5 shrink-0"/>
+                                        <p className="text-xs text-indigo-800">
+                                            <span className="font-bold">Full Direction:</span> {fullDirection}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div className="col-span-2">
-                             <input {...register(`medicines.${index}.dosage` as const)} placeholder="Dose (500mg)" className="w-full text-sm border-slate-300 rounded border p-1.5" />
-                        </div>
-                        <div className="col-span-2">
-                             <input {...register(`medicines.${index}.frequency` as const)} placeholder="Freq (1-0-1)" className="w-full text-sm border-slate-300 rounded border p-1.5" />
-                        </div>
-                        <div className="col-span-3">
-                             <input {...register(`medicines.${index}.duration` as const)} placeholder="Dur (5 days)" className="w-full text-sm border-slate-300 rounded border p-1.5" />
-                        </div>
-                        <div className="col-span-1 flex justify-end">
-                            <button type="button" onClick={() => remove(index)} className="text-red-500 hover:text-red-700 p-1.5"><Trash2 className="w-4 h-4"/></button>
-                        </div>
-                        <div className="col-span-12 mt-1">
-                            <input {...register(`medicines.${index}.instructions` as const)} placeholder="Special Instructions (e.g. After food)" className="w-full text-xs border-slate-300 rounded border p-1.5 text-slate-600 bg-white" />
-                        </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
         </div>
 
