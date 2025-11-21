@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { UserRole, User, VerificationStatus, DocumentType, UserDocument } from '../../types';
 import { Shield, ArrowRight, Loader2, AlertCircle, CheckCircle2, Building2, Stethoscope, CheckSquare, Upload } from 'lucide-react';
 import { dbService } from '../../services/db';
+import { INDIAN_STATES, MEDICAL_DEGREES } from '../../constants';
 
 interface LoginProps {
   onLogin: (user: User) => void;
@@ -18,18 +19,25 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
   const [error, setError] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
 
-  // Form states
+  // Form states - Common
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [otp, setOtp] = useState('');
-  
-  // Registration additional fields
   const [regName, setRegName] = useState('');
   const [regLicense, setRegLicense] = useState('');
   const [regState, setRegState] = useState('');
   const [agreeConsent, setAgreeConsent] = useState(false);
   
-  // File Upload State for Pharmacy
+  // Extended Registration States
+  const [regClinicName, setRegClinicName] = useState('');
+  const [regAddress, setRegAddress] = useState('');
+  const [regPhone, setRegPhone] = useState('');
+  const [regFax, setRegFax] = useState('');
+  const [regNmr, setRegNmr] = useState('');
+  const [regQualification, setRegQualification] = useState('');
+  const [regSpecialty, setRegSpecialty] = useState('');
+
+  // File Upload State
   const [uploadedDoc, setUploadedDoc] = useState<UserDocument | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -40,6 +48,13 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
     setRegName('');
     setRegLicense('');
     setRegState('');
+    setRegClinicName('');
+    setRegAddress('');
+    setRegPhone('');
+    setRegFax('');
+    setRegNmr('');
+    setRegQualification('');
+    setRegSpecialty('');
     setAgreeConsent(false);
     setUploadedDoc(null);
     setError('');
@@ -53,9 +68,15 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
           setIsUploading(true);
           try {
               const url = await dbService.uploadFile(file);
+              
+              // Determine doc type based on role
+              const docType = selectedRole === UserRole.DOCTOR 
+                ? DocumentType.NMC_REGISTRATION 
+                : DocumentType.PHARMACY_LICENSE;
+
               const doc: UserDocument = {
                   id: `doc-${Date.now()}`,
-                  type: DocumentType.PHARMACY_LICENSE,
+                  type: docType,
                   name: file.name,
                   url: url,
                   uploadedAt: new Date().toISOString()
@@ -73,6 +94,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
   const handleRegisterSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError('');
     
     if (!agreeConsent) {
         setError("You must consent to data processing under DPDP Act 2023.");
@@ -87,9 +109,12 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
         return;
     }
 
-    // Pharmacy Document Check
-    if (selectedRole === UserRole.PHARMACY && !uploadedDoc) {
-        setError("Please upload your Pharmacy License (Form 20/21) for verification.");
+    // Document Check (Required for both now)
+    if (!uploadedDoc) {
+        const msg = selectedRole === UserRole.DOCTOR 
+            ? "Please upload your Medical Registration Certificate." 
+            : "Please upload your Pharmacy License.";
+        setError(msg);
         setLoading(false);
         return;
     }
@@ -106,7 +131,20 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
         registrationDate: new Date().toISOString(),
         licenseNumber: regLicense,
         state: regState,
-        documents: documents
+        documents: documents,
+        
+        // Extended Fields
+        clinicName: regClinicName,
+        clinicAddress: regAddress,
+        phone: regPhone,
+        fax: regFax,
+        nmrUid: regNmr,
+        qualifications: regQualification,
+        specialty: regSpecialty,
+        
+        // Also populate backward compatible fields if any
+        city: regAddress.split(',').pop()?.trim() || '',
+        pincode: '' // Not collected in simplified form, can be updated later
     };
 
     setTimeout(() => {
@@ -185,7 +223,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
   };
 
   return (
-    <div className="max-w-md mx-auto mt-10 bg-white rounded-xl shadow-xl overflow-hidden border border-slate-200 relative">
+    <div className="max-w-md mx-auto mt-10 bg-white rounded-xl shadow-xl overflow-hidden border border-slate-200 relative mb-10">
        
       <div className="bg-indigo-50 p-6 border-b border-indigo-100">
         <h2 className="text-2xl font-bold text-indigo-900 text-center">DevXWorld Secure Portal</h2>
@@ -326,8 +364,12 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
         ) : (
             /* REGISTRATION FORM */
             <form onSubmit={handleRegisterSubmit} className="space-y-4">
+                
+                {/* Common: Name */}
                 <div>
-                    <label className="block text-sm font-medium text-slate-700">Full Name / Establishment Name</label>
+                    <label className="block text-sm font-medium text-slate-700">
+                        {selectedRole === UserRole.DOCTOR ? 'Doctor Name' : 'Establishment Name'} <span className="text-red-500">*</span>
+                    </label>
                     <input
                         type="text"
                         required
@@ -337,52 +379,161 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
                         placeholder={selectedRole === UserRole.DOCTOR ? "Dr. First Last" : "Apollo Pharmacy"}
                     />
                 </div>
-                <div>
-                    <label className="block text-sm font-medium text-slate-700">
-                        {selectedRole === UserRole.DOCTOR ? 'Medical Registration No.' : 'Pharmacy License (Form 20/21/20B/21B)'}
-                    </label>
-                    <input
-                        type="text"
-                        required
-                        value={regLicense}
-                        onChange={(e) => setRegLicense(e.target.value)}
-                        className="block w-full px-3 py-2 border border-slate-300 rounded-md sm:text-sm"
-                        placeholder={selectedRole === UserRole.PHARMACY ? "e.g. DL-20B-12345" : ""}
-                    />
-                </div>
-                
-                {/* Pharmacy Document Upload */}
+
+                {/* DOCTOR SPECIFIC FIELDS */}
+                {selectedRole === UserRole.DOCTOR && (
+                    <>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700">Qualification <span className="text-red-500">*</span></label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={regQualification}
+                                    onChange={(e) => setRegQualification(e.target.value)}
+                                    className="block w-full px-3 py-2 border border-slate-300 rounded-md sm:text-sm"
+                                    placeholder="e.g. MBBS, MD"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700">Specialty</label>
+                                <input
+                                    type="text"
+                                    value={regSpecialty}
+                                    onChange={(e) => setRegSpecialty(e.target.value)}
+                                    className="block w-full px-3 py-2 border border-slate-300 rounded-md sm:text-sm"
+                                    placeholder="e.g. Cardiology"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700">Reg. Number <span className="text-red-500">*</span></label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={regLicense}
+                                    onChange={(e) => setRegLicense(e.target.value)}
+                                    className="block w-full px-3 py-2 border border-slate-300 rounded-md sm:text-sm"
+                                    placeholder="State Council No"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700">NMR UID</label>
+                                <input
+                                    type="text"
+                                    value={regNmr}
+                                    onChange={(e) => setRegNmr(e.target.value)}
+                                    className="block w-full px-3 py-2 border border-slate-300 rounded-md sm:text-sm"
+                                    placeholder="NMR Unique ID"
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700">Clinic / Hospital Name <span className="text-red-500">*</span></label>
+                            <input
+                                type="text"
+                                required
+                                value={regClinicName}
+                                onChange={(e) => setRegClinicName(e.target.value)}
+                                className="block w-full px-3 py-2 border border-slate-300 rounded-md sm:text-sm"
+                                placeholder="e.g. City Care Clinic"
+                            />
+                        </div>
+                    </>
+                )}
+
+                {/* PHARMACY SPECIFIC */}
                 {selectedRole === UserRole.PHARMACY && (
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Upload License Document</label>
-                        <div className="flex items-center space-x-2">
-                            <label className={`cursor-pointer flex items-center justify-center px-4 py-2 border border-slate-300 rounded-md shadow-sm text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}>
-                                {isUploading ? <Loader2 className="w-4 h-4 animate-spin mr-2"/> : <Upload className="w-4 h-4 mr-2"/>}
-                                {uploadedDoc ? 'Change File' : 'Choose File'}
-                                <input type="file" accept="image/*,.pdf" className="hidden" onChange={handleFileUpload} />
-                            </label>
-                            {uploadedDoc && (
-                                <span className="text-xs text-green-600 flex items-center">
-                                    <CheckCircle2 className="w-3 h-3 mr-1"/> Uploaded
-                                </span>
-                            )}
-                        </div>
-                        <p className="text-xs text-slate-400 mt-1">Form 20/21 (Max 5MB, PDF/JPG)</p>
+                        <label className="block text-sm font-medium text-slate-700">License No (Form 20/21) <span className="text-red-500">*</span></label>
+                        <input
+                            type="text"
+                            required
+                            value={regLicense}
+                            onChange={(e) => setRegLicense(e.target.value)}
+                            className="block w-full px-3 py-2 border border-slate-300 rounded-md sm:text-sm"
+                            placeholder="e.g. DL-20B-12345"
+                        />
                     </div>
                 )}
 
+                {/* COMMON CONTACT INFO */}
                 <div>
-                    <label className="block text-sm font-medium text-slate-700">State</label>
+                    <label className="block text-sm font-medium text-slate-700">Full Address <span className="text-red-500">*</span></label>
                     <input
                         type="text"
                         required
-                        value={regState}
-                        onChange={(e) => setRegState(e.target.value)}
+                        value={regAddress}
+                        onChange={(e) => setRegAddress(e.target.value)}
                         className="block w-full px-3 py-2 border border-slate-300 rounded-md sm:text-sm"
+                        placeholder="Street, City, Pincode"
                     />
                 </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700">State <span className="text-red-500">*</span></label>
+                        <select 
+                            value={regState} 
+                            onChange={(e) => setRegState(e.target.value)}
+                            className="block w-full px-3 py-2 border border-slate-300 rounded-md sm:text-sm bg-white"
+                            required
+                        >
+                            <option value="">Select State</option>
+                            {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                    </div>
+                     <div>
+                        <label className="block text-sm font-medium text-slate-700">Phone <span className="text-red-500">*</span></label>
+                        <input
+                            type="text"
+                            required
+                            value={regPhone}
+                            onChange={(e) => setRegPhone(e.target.value)}
+                            className="block w-full px-3 py-2 border border-slate-300 rounded-md sm:text-sm"
+                            placeholder="+91"
+                        />
+                    </div>
+                </div>
+
+                {selectedRole === UserRole.DOCTOR && (
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700">Fax (Optional)</label>
+                        <input
+                            type="text"
+                            value={regFax}
+                            onChange={(e) => setRegFax(e.target.value)}
+                            className="block w-full px-3 py-2 border border-slate-300 rounded-md sm:text-sm"
+                        />
+                    </div>
+                )}
+
+                {/* FILE UPLOAD */}
                 <div>
-                    <label className="block text-sm font-medium text-slate-700">Email</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                        {selectedRole === UserRole.DOCTOR ? 'Upload Medical Registration' : 'Upload Pharmacy License'} <span className="text-red-500">*</span>
+                    </label>
+                    <div className="flex items-center space-x-2">
+                        <label className={`cursor-pointer flex items-center justify-center px-4 py-2 border border-slate-300 rounded-md shadow-sm text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                            {isUploading ? <Loader2 className="w-4 h-4 animate-spin mr-2"/> : <Upload className="w-4 h-4 mr-2"/>}
+                            {uploadedDoc ? 'Change File' : 'Choose File'}
+                            <input type="file" accept="image/*,.pdf" className="hidden" onChange={handleFileUpload} />
+                        </label>
+                        {uploadedDoc && (
+                            <span className="text-xs text-green-600 flex items-center">
+                                <CheckCircle2 className="w-3 h-3 mr-1"/> Uploaded: {uploadedDoc.name.substring(0,15)}...
+                            </span>
+                        )}
+                    </div>
+                    <p className="text-xs text-slate-400 mt-1">Max 5MB (PDF/JPG)</p>
+                </div>
+
+                {/* EMAIL & PASSWORD */}
+                <div>
+                    <label className="block text-sm font-medium text-slate-700">Login Email <span className="text-red-500">*</span></label>
                     <input
                         type="email"
                         required
@@ -392,7 +543,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-slate-700">Create Password</label>
+                    <label className="block text-sm font-medium text-slate-700">Create Password <span className="text-red-500">*</span></label>
                     <input
                         type="password"
                         required
@@ -421,7 +572,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
 
                 <button
                     type="submit"
-                    disabled={loading || (selectedRole === UserRole.PHARMACY && !uploadedDoc)}
+                    disabled={loading || !uploadedDoc}
                     className="w-full flex justify-center items-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none disabled:opacity-70"
                 >
                     {loading ? <Loader2 className="animate-spin h-4 w-4" /> : 'Submit Application'}
