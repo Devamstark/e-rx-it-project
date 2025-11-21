@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { Medicine, Prescription, User } from '../../types';
-import { Plus, Trash2, Send, BrainCircuit, FileText, AlertTriangle, Info } from 'lucide-react';
+import { Plus, Trash2, Send, BrainCircuit, FileText, AlertTriangle, Info, Video } from 'lucide-react';
 import { analyzePrescriptionSafety } from '../../services/geminiService';
 import { COMMON_MEDICINES } from '../../constants';
 
@@ -49,6 +49,7 @@ export const CreatePrescription: React.FC<CreatePrescriptionProps> = ({ doctorId
   const [analyzing, setAnalyzing] = useState(false);
   const [aiAnalysis, setAiAnalysis] = useState<{ safe: boolean; warnings: string[]; advice: string } | null>(null);
   const [selectedPharmacyId, setSelectedPharmacyId] = useState('');
+  const [isPatientVerified, setIsPatientVerified] = useState(false);
 
   const diagnosis = watch('diagnosis');
   const medicines = watch('medicines');
@@ -67,11 +68,17 @@ export const CreatePrescription: React.FC<CreatePrescriptionProps> = ({ doctorId
         return;
     }
 
+    if (!isPatientVerified) {
+        alert("You must verify the patient's identity as per Telemedicine Guidelines before prescribing.");
+        return;
+    }
+
     const pharmacy = verifiedPharmacies.find(p => p.id === selectedPharmacyId);
     
+    // ID is generated in App.tsx to ensure global sequential order
     const newRx: Prescription = {
         ...data,
-        id: `RX-${Date.now()}`,
+        id: '', // Placeholder, will be overwritten by App.tsx
         doctorId,
         doctorName,
         pharmacyId: selectedPharmacyId,
@@ -238,6 +245,27 @@ export const CreatePrescription: React.FC<CreatePrescriptionProps> = ({ doctorId
         <div>
             <label className="block text-sm font-medium text-slate-700">Additional Advice</label>
             <textarea {...register('advice')} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border p-2" rows={2}></textarea>
+        </div>
+
+        {/* Compliance & Verification */}
+        <div className="bg-yellow-50 p-4 rounded-md border border-yellow-200">
+            <h4 className="text-sm font-bold text-yellow-800 mb-2 flex items-center">
+                <Video className="w-4 h-4 mr-2"/> Telemedicine Compliance
+            </h4>
+            <div className="flex items-start">
+                <div className="flex items-center h-5">
+                    <input
+                        id="patient-verify"
+                        type="checkbox"
+                        checked={isPatientVerified}
+                        onChange={(e) => setIsPatientVerified(e.target.checked)}
+                        className="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                    />
+                </div>
+                <div className="ml-2 text-sm">
+                    <label htmlFor="patient-verify" className="font-medium text-slate-700">I certify that I have verified the patient's identity via video/audio interaction as per Telemedicine Practice Guidelines 2020.</label>
+                </div>
+            </div>
         </div>
 
         {/* Pharmacy Selection */}

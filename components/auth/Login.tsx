@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { UserRole, User, VerificationStatus } from '../../types';
-import { Shield, ArrowRight, Loader2, AlertCircle, CheckCircle2, Building2, Stethoscope } from 'lucide-react';
+import { Shield, ArrowRight, Loader2, AlertCircle, CheckCircle2, Building2, Stethoscope, CheckSquare } from 'lucide-react';
 
 interface LoginProps {
   onLogin: (user: User) => void;
@@ -26,6 +26,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
   const [regName, setRegName] = useState('');
   const [regLicense, setRegLicense] = useState('');
   const [regState, setRegState] = useState('');
+  const [agreeConsent, setAgreeConsent] = useState(false);
 
   const resetForm = () => {
     setEmail('');
@@ -34,6 +35,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
     setRegName('');
     setRegLicense('');
     setRegState('');
+    setAgreeConsent(false);
     setError('');
     setStatusMessage('');
     setStep('CREDENTIALS');
@@ -43,6 +45,12 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
     e.preventDefault();
     setLoading(true);
     
+    if (!agreeConsent) {
+        setError("You must consent to data processing under DPDP Act 2023.");
+        setLoading(false);
+        return;
+    }
+
     // Check if user exists
     if (users.some(u => u.email === email)) {
         setError("User with this email/username already exists.");
@@ -292,7 +300,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-slate-700">
-                        {selectedRole === UserRole.DOCTOR ? 'Medical Registration No.' : 'Pharmacy License No.'}
+                        {selectedRole === UserRole.DOCTOR ? 'Medical Registration No.' : 'Pharmacy License (Form 20/21/20B/21B)'}
                     </label>
                     <input
                         type="text"
@@ -300,6 +308,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
                         value={regLicense}
                         onChange={(e) => setRegLicense(e.target.value)}
                         className="block w-full px-3 py-2 border border-slate-300 rounded-md sm:text-sm"
+                        placeholder={selectedRole === UserRole.PHARMACY ? "e.g. DL-20B-12345" : ""}
                     />
                 </div>
                 <div>
@@ -331,6 +340,23 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
                         onChange={(e) => setPassword(e.target.value)}
                         className="block w-full px-3 py-2 border border-slate-300 rounded-md sm:text-sm"
                     />
+                </div>
+
+                {/* DPDP Act Consent */}
+                <div className="flex items-start pt-2">
+                    <div className="flex items-center h-5">
+                        <input
+                            id="consent"
+                            type="checkbox"
+                            checked={agreeConsent}
+                            onChange={(e) => setAgreeConsent(e.target.checked)}
+                            className="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                        />
+                    </div>
+                    <div className="ml-2 text-xs">
+                        <label htmlFor="consent" className="font-medium text-slate-700">DPDP Act 2023 Consent</label>
+                        <p className="text-slate-500">I explicitly consent to the collection and processing of my personal/professional data for the purpose of e-Prescription services as per the Digital Personal Data Protection Act, 2023.</p>
+                    </div>
                 </div>
 
                 <button

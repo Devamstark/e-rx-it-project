@@ -123,8 +123,18 @@ function App() {
     alert(`PASSWORD RESET SUCCESSFUL\n\nUser ID: ${userId}\nTemporary Password: ${tempPassword}\n\nPlease copy and share this password securely with the user.`);
   };
 
-  const handleCreatePrescription = (newRx: Prescription) => {
-    setPrescriptions(prev => [newRx, ...prev]);
+  const handleCreatePrescription = (rxData: Prescription) => {
+    // Sequential ID Generation Logic
+    const currentCount = prescriptions.length + 1;
+    // Pad with zeros to 9 digits: 000000001
+    const sequentialId = currentCount.toString().padStart(9, '0');
+
+    const newRxWithId: Prescription = {
+        ...rxData,
+        id: sequentialId
+    };
+    
+    setPrescriptions(prev => [newRxWithId, ...prev]);
   };
 
   const handleDispensePrescription = (rxId: string) => {
