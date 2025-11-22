@@ -14,7 +14,7 @@ interface CreatePrescriptionProps {
   onAddPatient: (p: Patient) => void;
 }
 
-type PrescriptionFormData = Omit<Prescription, 'id' | 'date' | 'status' | 'digitalSignatureToken' | 'doctorId' | 'doctorName' | 'pharmacyName' | 'doctorDetails' | 'patientId' | 'patientDetails'>;
+type PrescriptionFormData = Omit<Prescription, 'id' | 'date' | 'status' | 'digitalSignatureToken' | 'doctorId' | 'doctorName' | 'pharmacyName' | 'doctorDetails' | 'patientId'>;
 
 const getFrequencyDescription = (freq: string): string => {
     if (!freq) return '';
@@ -33,7 +33,7 @@ const getFrequencyDescription = (freq: string): string => {
 export const CreatePrescription: React.FC<CreatePrescriptionProps> = ({ currentUser, onPrescriptionSent, verifiedPharmacies, patients, onAddPatient }) => {
   const { register, control, handleSubmit, watch, setValue, formState: { errors } } = useForm<PrescriptionFormData>({
     defaultValues: {
-      medicines: [{ name: '', dosage: '', frequency: '', duration: '', instructions: '', route: 'Oral', refill: '0' }],
+      medicines: [{ name: '', dosage: '', frequency: '', duration: '', instructions: '' }],
       patientGender: 'Male'
     }
   });
@@ -111,10 +111,6 @@ export const CreatePrescription: React.FC<CreatePrescriptionProps> = ({ currentU
 
     let finalPatientId = selectedPatient?.id;
     let finalPatientName = data.patientName;
-    let finalPatientAddress = '';
-    let finalPatientPhone = '';
-    let finalPatientAllergies: string[] = [];
-    let finalPatientConditions: string[] = [];
 
     // 1. Handle New Patient Creation if in CREATE mode
     if (patientMode === 'CREATE') {
@@ -143,16 +139,7 @@ export const CreatePrescription: React.FC<CreatePrescriptionProps> = ({ currentU
         onAddPatient(createdPatient);
         finalPatientId = createdPatient.id;
         finalPatientName = createdPatient.fullName;
-        finalPatientAddress = createdPatient.address;
-        finalPatientPhone = createdPatient.phone;
-        finalPatientAllergies = createdPatient.allergies;
-        finalPatientConditions = createdPatient.chronicConditions;
-    } else if (selectedPatient) {
-        finalPatientAddress = selectedPatient.address;
-        finalPatientPhone = selectedPatient.phone;
-        finalPatientAllergies = selectedPatient.allergies;
-        finalPatientConditions = selectedPatient.chronicConditions;
-    } else {
+    } else if (!selectedPatient) {
         alert("Please select an existing patient or create a new one.");
         return;
     }
@@ -181,15 +168,6 @@ export const CreatePrescription: React.FC<CreatePrescriptionProps> = ({ currentU
             phone: currentUser.phone || '',
             fax: currentUser.fax,
             email: currentUser.email
-        },
-        patientDetails: {
-            name: finalPatientName,
-            age: data.patientAge,
-            gender: data.patientGender,
-            address: finalPatientAddress,
-            phone: finalPatientPhone,
-            allergies: finalPatientAllergies,
-            chronicConditions: finalPatientConditions
         },
         pharmacyId: selectedPharmacyId,
         pharmacyName: pharmacy ? pharmacy.name : 'Unassigned',
@@ -408,7 +386,7 @@ export const CreatePrescription: React.FC<CreatePrescriptionProps> = ({ currentU
         <div>
             <div className="flex justify-between items-center mb-3">
                 <label className="block text-sm font-bold text-slate-700 uppercase tracking-wide">3. Medication (Rx)</label>
-                <button type="button" onClick={() => append({ name: '', dosage: '1 Tab', frequency: '1-0-1', duration: '5 Days', instructions: 'After Food', route: 'Oral', refill: '0' })} className="text-sm text-white bg-indigo-600 hover:bg-indigo-700 px-3 py-1.5 rounded-md font-medium flex items-center shadow-sm">
+                <button type="button" onClick={() => append({ name: '', dosage: '', frequency: '', duration: '', instructions: '' })} className="text-sm text-white bg-indigo-600 hover:bg-indigo-700 px-3 py-1.5 rounded-md font-medium flex items-center shadow-sm">
                     <Plus className="w-4 h-4 mr-1"/> Add Drug
                 </button>
             </div>
@@ -428,9 +406,9 @@ export const CreatePrescription: React.FC<CreatePrescriptionProps> = ({ currentU
 
                     return (
                         <div key={field.id} className="bg-slate-50 p-4 rounded-lg border border-slate-200 shadow-sm">
-                            <div className="grid grid-cols-12 gap-3 items-end">
+                            <div className="grid grid-cols-12 gap-3 items-start">
                                 <div className="col-span-12 sm:col-span-4">
-                                    <label className="text-[10px] font-bold text-slate-500 mb-1 block uppercase">Medicine Name</label>
+                                    <label className="text-xs font-bold text-slate-500 mb-1 block">Medicine Name</label>
                                     <input 
                                       {...register(`medicines.${index}.name` as const, { required: true })} 
                                       list="common-medicines"
@@ -438,22 +416,12 @@ export const CreatePrescription: React.FC<CreatePrescriptionProps> = ({ currentU
                                       className="w-full text-sm border-slate-300 rounded border p-2 font-medium" 
                                     />
                                 </div>
-                                <div className="col-span-6 sm:col-span-2">
-                                     <label className="text-[10px] font-bold text-slate-500 mb-1 block uppercase">Dose</label>
+                                <div className="col-span-4 sm:col-span-2">
+                                     <label className="text-xs font-bold text-slate-500 mb-1 block">Dose</label>
                                      <input {...register(`medicines.${index}.dosage` as const)} placeholder="500mg" className="w-full text-sm border-slate-300 rounded border p-2" />
                                 </div>
-                                <div className="col-span-6 sm:col-span-2">
-                                     <label className="text-[10px] font-bold text-slate-500 mb-1 block uppercase">Route</label>
-                                     <select {...register(`medicines.${index}.route` as const)} className="w-full text-sm border-slate-300 rounded border p-2 bg-white">
-                                         <option value="Oral">Oral</option>
-                                         <option value="Topical">Topical</option>
-                                         <option value="Injection">Injection</option>
-                                         <option value="Inhalation">Inhalation</option>
-                                         <option value="Drops">Drops</option>
-                                     </select>
-                                </div>
-                                <div className="col-span-6 sm:col-span-2">
-                                     <label className="text-[10px] font-bold text-slate-500 mb-1 block uppercase">Freq (1-0-1)</label>
+                                <div className="col-span-4 sm:col-span-2">
+                                     <label className="text-xs font-bold text-slate-500 mb-1 block">Freq (1-0-1)</label>
                                      <input 
                                         {...register(`medicines.${index}.frequency` as const)} 
                                         placeholder="BD / OD" 
@@ -461,29 +429,27 @@ export const CreatePrescription: React.FC<CreatePrescriptionProps> = ({ currentU
                                         title="Use codes like 1-0-1, BD, OD"
                                      />
                                 </div>
-                                <div className="col-span-6 sm:col-span-2">
-                                     <label className="text-[10px] font-bold text-slate-500 mb-1 block uppercase">Duration</label>
-                                     <input {...register(`medicines.${index}.duration` as const)} placeholder="5 Days" className="w-full text-sm border-slate-300 rounded border p-2" />
+                                <div className="col-span-4 sm:col-span-2">
+                                     <label className="text-xs font-bold text-slate-500 mb-1 block">Duration</label>
+                                     <input {...register(`medicines.${index}.duration` as const)} placeholder="5 days" className="w-full text-sm border-slate-300 rounded border p-2" />
+                                </div>
+                                <div className="col-span-12 sm:col-span-1 flex justify-end mt-6">
+                                    <button type="button" onClick={() => remove(index)} className="text-red-500 hover:text-red-700 p-2 bg-white rounded border border-slate-200 hover:bg-red-50 transition-colors"><Trash2 className="w-4 h-4"/></button>
                                 </div>
                             </div>
-                            <div className="grid grid-cols-12 gap-3 mt-3 items-end">
-                                <div className="col-span-8">
-                                    <label className="text-[10px] font-bold text-slate-500 mb-1 block uppercase">Instructions</label>
+                            
+                            <div className="grid grid-cols-12 gap-4 mt-3">
+                                <div className="col-span-12 sm:col-span-6">
                                     <input {...register(`medicines.${index}.instructions` as const)} placeholder="Special Instructions (e.g. After food)" className="w-full text-xs border-slate-300 rounded border p-2 text-slate-600 bg-white" />
                                 </div>
-                                <div className="col-span-2">
-                                    <label className="text-[10px] font-bold text-slate-500 mb-1 block uppercase">Refills</label>
-                                    <input {...register(`medicines.${index}.refill` as const)} type="number" className="w-full text-xs border-slate-300 rounded border p-2 text-slate-600 bg-white" placeholder="0" />
+                                <div className="col-span-12 sm:col-span-6 flex items-center">
+                                    <div className="bg-indigo-50 border border-indigo-100 rounded px-3 py-1.5 w-full flex items-start">
+                                        <Info className="w-4 h-4 text-indigo-500 mr-2 mt-0.5 shrink-0"/>
+                                        <p className="text-xs text-indigo-800 truncate">
+                                            <span className="font-bold">Direction:</span> {fullDirection}
+                                        </p>
+                                    </div>
                                 </div>
-                                <div className="col-span-2">
-                                    <button type="button" onClick={() => remove(index)} className="w-full text-red-500 hover:text-red-700 p-2 bg-white rounded border border-slate-200 hover:bg-red-50 transition-colors"><Trash2 className="w-4 h-4 mx-auto"/></button>
-                                </div>
-                            </div>
-                            <div className="mt-2 bg-indigo-50 border border-indigo-100 rounded px-3 py-1.5 w-full flex items-start">
-                                <Info className="w-4 h-4 text-indigo-500 mr-2 mt-0.5 shrink-0"/>
-                                <p className="text-xs text-indigo-800 truncate">
-                                    <span className="font-bold">Preview:</span> {fullDirection}
-                                </p>
                             </div>
                         </div>
                     );
@@ -529,8 +495,8 @@ export const CreatePrescription: React.FC<CreatePrescriptionProps> = ({ currentU
         )}
 
         <div>
-            <label className="block text-sm font-bold text-slate-700 uppercase tracking-wide">4. Notes / Remarks</label>
-            <textarea {...register('advice')} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border p-3 text-sm" rows={2} placeholder="Additional notes, diet plan, or follow-up details..."></textarea>
+            <label className="block text-sm font-bold text-slate-700 uppercase tracking-wide">4. Additional Advice</label>
+            <textarea {...register('advice')} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border p-3 text-sm" rows={2}></textarea>
         </div>
 
         {/* Compliance & Verification */}

@@ -175,13 +175,10 @@ export interface DoctorProfile {
 
 export interface Medicine {
   name: string;
-  dosage: string; // e.g., 1 Tablet
-  strength?: string; // e.g., 500mg
-  route?: string; // e.g., Oral
+  dosage: string; // e.g., 500mg
   frequency: string; // e.g., 1-0-1
   duration: string; // e.g., 5 days
   instructions: string; // e.g., After food
-  refill?: string; // e.g., 0
 }
 
 // Snapshot of doctor details at the time of prescription
@@ -202,16 +199,6 @@ export interface DoctorDetailsSnapshot {
   specialty?: string;
 }
 
-export interface PatientDetailsSnapshot {
-  name: string;
-  age: number;
-  gender: 'Male' | 'Female' | 'Other';
-  address: string;
-  phone: string;
-  allergies: string[];
-  chronicConditions?: string[];
-}
-
 export interface Prescription {
   id: string;
   doctorId: string;
@@ -221,7 +208,6 @@ export interface Prescription {
   patientName: string;
   patientAge: number;
   patientGender: 'Male' | 'Female' | 'Other';
-  patientDetails?: PatientDetailsSnapshot; // Full snapshot at time of issue
   diagnosis: string;
   medicines: Medicine[];
   advice: string;
