@@ -132,8 +132,9 @@ export const dbService = {
                 .eq('id', 'global_patients')
                 .single();
 
-            // Load Audit Logs with Fallback Strategy
-            let auditLogs: AuditLog[] = [];
+            // Load Audit Logs with Merging Strategy (SQL + Blob)
+            let sqlLogs: AuditLog[] = [];
+            let blobLogsData: AuditLog[] = [];
             
             // 1. Try SQL Table
             const { data: logsData, error: logsError } = await supabase
@@ -142,26 +143,34 @@ export const dbService = {
                 .order('created_at', { ascending: false })
                 .limit(100);
 
-            if (!logsError && logsData && logsData.length > 0) {
-                auditLogs = logsData.map((l: any) => ({
+            if (!logsError && logsData) {
+                sqlLogs = logsData.map((l: any) => ({
                     id: l.id,
                     actorId: l.actor_id,
                     action: l.action,
                     details: l.details,
                     timestamp: l.created_at
                 }));
-            } else {
-                 // 2. Fallback to JSON blob storage
-                 // Use this if SQL table is empty or inaccessible due to RLS
-                 const { data: blobLogs } = await supabase
-                    .from('system_logs')
-                    .select('data')
-                    .eq('id', 'global_audit_logs')
-                    .single();
-                 if (blobLogs && blobLogs.data) {
-                     auditLogs = blobLogs.data;
-                 }
             }
+
+            // 2. Fetch JSON blob storage (Always fetch to merge logs that failed SQL insert)
+            const { data: blobLogs } = await supabase
+                .from('system_logs')
+                .select('data')
+                .eq('id', 'global_audit_logs')
+                .single();
+            
+            if (blobLogs && blobLogs.data) {
+                blobLogsData = blobLogs.data;
+            }
+
+            // 3. Merge and Deduplicate
+            // Prefer SQL logs if ID collision, though IDs should be unique
+            const allLogs = [...sqlLogs, ...blobLogsData];
+            const uniqueLogs = Array.from(new Map(allLogs.map(item => [item.id, item])).values());
+            
+            // Sort descending
+            const auditLogs = uniqueLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
             
             // Parse or Default
             const users = (userData && userData.data) ? userData.data : INITIAL_USERS;
@@ -240,6 +249,7 @@ export const dbService = {
 
         } catch (e) {
             // Fallback: If SQL insert fails (e.g., RLS policy), save to blob storage
+            console.warn("SQL Log failed, using fallback blob storage", e);
             try {
                 const { data: current } = await supabase
                     .from('system_logs')

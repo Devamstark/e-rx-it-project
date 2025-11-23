@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { ShieldAlert, Plus, CheckCircle2, AlertTriangle, Trash2, FileText, Activity, RefreshCw, Ban, File, X, Stethoscope, Building2, Eye, Mail, Phone as PhoneIcon, MapPin, Calendar, Edit2, Save as SaveIcon, Lock } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { ShieldAlert, Plus, CheckCircle2, AlertTriangle, Trash2, FileText, Activity, RefreshCw, Ban, File, X, Stethoscope, Building2, Eye, Mail, Phone as PhoneIcon, MapPin, Calendar, Edit2, Save as SaveIcon, Lock, Search } from 'lucide-react';
 import { AdminRole, AdminPermission, AdminUser, User, UserRole, VerificationStatus, Prescription, UserDocument, AuditLog } from '../../types';
 
 interface AdminDashboardProps {
@@ -333,26 +333,37 @@ const UserProfileModal = ({ user, onClose, onSave }: { user: User; onClose: () =
 const SecurityLogView = ({ logs, users }: { logs: AuditLog[], users: User[] }) => {
     const [activeTab, setActiveTab] = useState<'ALL' | 'DOCTOR' | 'PHARMACY' | 'ADMIN'>('ALL');
 
-    // User Lookup Helper Map
-    const userMap = new Map<string, { name: string, role: string }>();
-    users.forEach(u => {
-        userMap.set(u.id, { name: u.name, role: u.role });
-    });
-    userMap.set('adm-root', { name: 'System Admin', role: 'ADMIN' });
+    // Create a robust user map to look up names/roles from actorId
+    const userMap = useMemo(() => {
+        const map = new Map<string, { name: string, role: string }>();
+        // Add all registered users
+        users.forEach(u => {
+            map.set(u.id, { name: u.name, role: u.role });
+        });
+        // Add known system/admin accounts
+        map.set('adm-root', { name: 'System Admin', role: 'SUPER_ADMIN' });
+        return map;
+    }, [users]);
 
     const getUserInfo = (actorId: string) => {
         return userMap.get(actorId) || { name: actorId, role: 'UNKNOWN' };
     };
 
-    // Filter logs based on active tab
+    // Filter logs based on active tab and derived role
     const filteredLogs = logs.filter(log => {
-        // For prototype, we are checking mostly Auth events, but generic filter applies
+        const userInfo = getUserInfo(log.actorId);
+        
         if (activeTab === 'ALL') return true;
         
-        const userInfo = getUserInfo(log.actorId);
-        if (activeTab === 'DOCTOR') return userInfo.role === 'DOCTOR';
-        if (activeTab === 'PHARMACY') return userInfo.role === 'PHARMACY';
-        if (activeTab === 'ADMIN') return userInfo.role === 'ADMIN' || userInfo.role === 'SUPER_ADMIN';
+        if (activeTab === 'DOCTOR') {
+            return userInfo.role === 'DOCTOR';
+        }
+        if (activeTab === 'PHARMACY') {
+            return userInfo.role === 'PHARMACY';
+        }
+        if (activeTab === 'ADMIN') {
+            return userInfo.role === 'ADMIN' || userInfo.role === 'SUPER_ADMIN' || userInfo.role.includes('ADMIN');
+        }
         
         return false;
     });
@@ -940,7 +951,7 @@ const ApprovalQueue = ({
             </div>
             <div className="divide-y divide-slate-100">
                 {pendingUsers.map(user => (
-                    <div key={user.id} className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50">
+                    <div key={user.id} className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50 transition-colors">
                         <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
                                 <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded border ${user.role === 'DOCTOR' ? 'bg-teal-50 text-teal-700 border-teal-200' : 'bg-purple-50 text-purple-700 border-purple-200'}`}>
@@ -949,17 +960,19 @@ const ApprovalQueue = ({
                                 <span className="text-xs text-slate-400 font-mono">ID: {user.id}</span>
                             </div>
                             <h4 className="text-lg font-bold text-slate-900">{user.name}</h4>
-                            <div className="text-sm text-slate-600 mt-1 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
-                                <p><span className="font-medium text-slate-500">License:</span> {user.licenseNumber || 'N/A'}</p>
-                                <p><span className="font-medium text-slate-500">Email:</span> {user.email}</p>
+                            
+                            {/* Expanded Verification Details */}
+                            <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm text-slate-600 bg-slate-50/50 p-3 rounded border border-slate-100">
+                                <p className="flex items-center"><span className="font-bold w-20 text-slate-500">License:</span> <span className="font-mono bg-white px-1 border border-slate-200 rounded">{user.licenseNumber || 'N/A'}</span></p>
+                                <p className="flex items-center"><span className="font-bold w-20 text-slate-500">Phone:</span> {user.phone}</p>
+                                <p className="flex items-center sm:col-span-2"><span className="font-bold w-20 text-slate-500">Address:</span> {user.clinicAddress}, {user.city}</p>
+                                
                                 {user.role === 'DOCTOR' && (
                                     <>
-                                        <p><span className="font-medium text-slate-500">Qual:</span> {user.qualifications}</p>
-                                        <p><span className="font-medium text-slate-500">Specialty:</span> {user.specialty || '-'}</p>
+                                        <p className="flex items-center sm:col-span-2"><span className="font-bold w-20 text-slate-500">Quals:</span> {user.qualifications}</p>
+                                        <p className="flex items-center"><span className="font-bold w-20 text-slate-500">Specialty:</span> {user.specialty || '-'}</p>
+                                        <p className="flex items-center"><span className="font-bold w-20 text-slate-500">NMC UID:</span> {user.nmrUid}</p>
                                     </>
-                                )}
-                                {user.role === 'PHARMACY' && (
-                                    <p><span className="font-medium text-slate-500">Loc:</span> {user.city}, {user.state}</p>
                                 )}
                             </div>
                             
@@ -967,9 +980,9 @@ const ApprovalQueue = ({
                                 {user.documents && user.documents.length > 0 ? (
                                     <button 
                                         onClick={() => onViewDocs(user.documents!)}
-                                        className="text-xs flex items-center text-indigo-600 font-medium hover:underline bg-indigo-50 px-2 py-1 rounded"
+                                        className="text-xs flex items-center text-indigo-600 font-medium hover:underline bg-indigo-50 px-2 py-1 rounded border border-indigo-100"
                                     >
-                                        <FileText className="w-3 h-3 mr-1"/> View {user.documents.length} Documents
+                                        <FileText className="w-3 h-3 mr-1"/> Review {user.documents.length} Documents
                                     </button>
                                 ) : (
                                     <span className="text-xs text-red-500 flex items-center"><AlertTriangle className="w-3 h-3 mr-1"/> No Docs Uploaded</span>

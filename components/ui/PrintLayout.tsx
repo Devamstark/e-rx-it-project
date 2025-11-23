@@ -46,8 +46,8 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ rx }) => {
             {doc.specialty && <p className="text-xs font-medium text-slate-500 uppercase">{doc.specialty}</p>}
             
             <div className="mt-3 space-y-1 border-t border-slate-300 pt-2 inline-block text-right min-w-[180px]">
-                <p className="text-sm text-slate-700">Reg No: <span className="font-bold text-slate-900">{doc.registrationNumber}</span></p>
-                <p className="text-xs text-slate-600">NMR UID: <span className="font-semibold">{doc.nmrUid || 'N/A'}</span></p>
+                <p className="text-base text-slate-900 font-black tracking-wide border-2 border-slate-900 px-2 py-0.5 inline-block">Reg No: {doc.registrationNumber}</p>
+                <p className="text-xs text-slate-600 mt-1">NMR UID: <span className="font-semibold">{doc.nmrUid || 'N/A'}</span></p>
                 <p className="text-[10px] text-slate-500 uppercase">{doc.stateCouncil}</p>
             </div>
         </div>

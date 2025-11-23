@@ -2,9 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { Medicine, Prescription, User, Patient } from '../../types';
-import { Plus, Trash2, Send, BrainCircuit, FileText, AlertTriangle, Info, Video, User as UserIcon, Search, Check, Link2, UserPlus, ChevronDown, ChevronUp, Clock, RotateCcw } from 'lucide-react';
+import { Plus, Trash2, Send, BrainCircuit, FileText, AlertTriangle, Info, Video, User as UserIcon, Search, Link2, UserPlus, RotateCcw } from 'lucide-react';
 import { analyzePrescriptionSafety } from '../../services/geminiService';
-import { COMMON_MEDICINES, RESTRICTED_DRUGS } from '../../constants';
+import { LOW_RISK_GENERIC_LIST, RESTRICTED_DRUGS } from '../../constants';
 
 interface CreatePrescriptionProps {
   currentUser: User;
@@ -66,8 +66,10 @@ export const CreatePrescription: React.FC<CreatePrescriptionProps> = ({
   const [historySearch, setHistorySearch] = useState('');
   const [showHistoryResults, setShowHistoryResults] = useState(false);
 
-  // Filtered Autocomplete List
-  const safeMedicineList = COMMON_MEDICINES.filter(med => !RESTRICTED_DRUGS.some(restricted => med.toLowerCase().includes(restricted.toLowerCase())));
+  // Filtered Autocomplete List - Filter out restricted drugs for safety
+  const safeMedicineList = LOW_RISK_GENERIC_LIST.filter(med => 
+    !RESTRICTED_DRUGS.some(restricted => med.toLowerCase().includes(restricted.toLowerCase()))
+  );
 
   // New Patient State
   const [newPatient, setNewPatient] = useState<Partial<Patient>>({
@@ -115,6 +117,13 @@ export const CreatePrescription: React.FC<CreatePrescriptionProps> = ({
       setValue('diagnosis', rx.diagnosis);
       replace(rx.medicines);
       setValue('advice', rx.advice);
+      // Auto-fill patient if possible (nice to have)
+      if (patientMode === 'CREATE') {
+         setNewPatient(prev => ({ ...prev, fullName: rx.patientName, gender: rx.patientGender }));
+         setValue('patientName', rx.patientName);
+         setValue('patientAge', rx.patientAge);
+         setValue('patientGender', rx.patientGender);
+      }
       setHistorySearch('');
       setShowHistoryResults(false);
       alert(`Copied Rx details from ${rx.patientName}'s record dated ${new Date(rx.date).toLocaleDateString()}`);
@@ -211,7 +220,7 @@ export const CreatePrescription: React.FC<CreatePrescriptionProps> = ({
 
   return (
     <div className="bg-white rounded-lg shadow border border-slate-200">
-      <div className="p-6 border-b border-slate-200 flex justify-between items-center">
+      <div className="p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50">
         <h2 className="text-xl font-bold text-slate-800 flex items-center">
             <FileText className="mr-2 text-indigo-600"/> New e-Prescription
         </h2>
@@ -219,12 +228,12 @@ export const CreatePrescription: React.FC<CreatePrescriptionProps> = ({
         <div className="flex items-center gap-3">
             {/* History Lookup Button/Input */}
             <div className="relative">
-                <div className="flex items-center bg-indigo-50 border border-indigo-200 rounded-md px-3 py-1.5">
+                <div className="flex items-center bg-white border border-indigo-200 rounded-md px-3 py-1.5 shadow-sm">
                     <RotateCcw className="w-4 h-4 text-indigo-600 mr-2"/>
                     <input 
                         type="text"
-                        placeholder="Copy from Past Rx..."
-                        className="bg-transparent border-none text-xs focus:outline-none w-32 text-indigo-800 placeholder-indigo-400"
+                        placeholder="Autofill from Patient Name..."
+                        className="bg-transparent border-none text-xs focus:outline-none w-48 text-indigo-800 placeholder-indigo-400"
                         value={historySearch}
                         onChange={(e) => { setHistorySearch(e.target.value); setShowHistoryResults(true); }}
                         onFocus={() => setShowHistoryResults(true)}
@@ -232,7 +241,7 @@ export const CreatePrescription: React.FC<CreatePrescriptionProps> = ({
                 </div>
                 {showHistoryResults && historySearch && (
                     <div className="absolute top-full right-0 mt-1 w-80 bg-white border border-slate-200 rounded-md shadow-xl z-30">
-                        <div className="p-2 bg-slate-50 border-b border-slate-100 text-xs font-bold text-slate-500 uppercase">Select to Autofill</div>
+                        <div className="p-2 bg-slate-50 border-b border-slate-100 text-xs font-bold text-slate-500 uppercase">Select Past Rx to Autofill</div>
                         {filteredHistory.length > 0 ? (
                             filteredHistory.map(rx => (
                                 <button
@@ -244,7 +253,7 @@ export const CreatePrescription: React.FC<CreatePrescriptionProps> = ({
                                     <div className="font-bold text-slate-800">{rx.patientName}</div>
                                     <div className="text-xs text-slate-500 flex justify-between mt-1">
                                         <span>{new Date(rx.date).toLocaleDateString()}</span>
-                                        <span className="text-indigo-600">{rx.diagnosis}</span>
+                                        <span className="text-indigo-600 truncate max-w-[120px]">{rx.diagnosis}</span>
                                     </div>
                                 </button>
                             ))
@@ -254,7 +263,7 @@ export const CreatePrescription: React.FC<CreatePrescriptionProps> = ({
                     </div>
                 )}
             </div>
-            <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded border border-green-200">Telemedicine Compliant</span>
+            <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded border border-green-200 font-medium">Telemedicine Compliant</span>
         </div>
       </div>
 
