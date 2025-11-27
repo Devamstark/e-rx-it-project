@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { Medicine, Prescription, User, Patient, PrescriptionTemplate } from '../../types';
@@ -14,6 +15,7 @@ interface CreatePrescriptionProps {
   patients: Patient[];
   onAddPatient: (p: Patient) => void;
   prescriptionHistory: Prescription[]; // New Prop for History Lookup
+  preSelectedPatient?: Patient | null; // Added for Appointment Link
 }
 
 type PrescriptionFormData = Omit<Prescription, 'id' | 'date' | 'status' | 'digitalSignatureToken' | 'doctorId' | 'doctorName' | 'pharmacyName' | 'doctorDetails' | 'patientId'>;
@@ -38,7 +40,8 @@ export const CreatePrescription: React.FC<CreatePrescriptionProps> = ({
     verifiedPharmacies, 
     patients, 
     onAddPatient,
-    prescriptionHistory
+    prescriptionHistory,
+    preSelectedPatient
 }) => {
   const { register, control, handleSubmit, watch, setValue, getValues, trigger, formState: { errors } } = useForm<PrescriptionFormData>({
     defaultValues: {
@@ -107,20 +110,6 @@ export const CreatePrescription: React.FC<CreatePrescriptionProps> = ({
       setTemplates(saved);
   }, [currentUser.id]);
 
-  // Auto-calculate age when New Patient DOB changes
-  useEffect(() => {
-      if (patientMode === 'CREATE' && newPatient.dateOfBirth) {
-          const birthDate = new Date(newPatient.dateOfBirth);
-          const age = new Date().getFullYear() - birthDate.getFullYear();
-          const finalAge = age > 0 ? age : 0;
-          
-          // CRITICAL: Set form values for submission
-          setValue('patientAge', finalAge);
-          setValue('patientName', newPatient.fullName || '');
-          setValue('patientGender', newPatient.gender as any);
-      }
-  }, [newPatient.dateOfBirth, newPatient.fullName, newPatient.gender, patientMode, setValue]);
-
   const handleSelectPatient = (patient: Patient) => {
       // CRITICAL: Set form values so they are captured in handleSubmit
       setValue('patientName', patient.fullName);
@@ -134,6 +123,27 @@ export const CreatePrescription: React.FC<CreatePrescriptionProps> = ({
       setPatientSearch('');
       setShowPatientResults(false);
   };
+
+  // Handle Pre-selected patient prop change
+  useEffect(() => {
+      if (preSelectedPatient) {
+          handleSelectPatient(preSelectedPatient);
+      }
+  }, [preSelectedPatient]);
+
+  // Auto-calculate age when New Patient DOB changes
+  useEffect(() => {
+      if (patientMode === 'CREATE' && newPatient.dateOfBirth) {
+          const birthDate = new Date(newPatient.dateOfBirth);
+          const age = new Date().getFullYear() - birthDate.getFullYear();
+          const finalAge = age > 0 ? age : 0;
+          
+          // CRITICAL: Set form values for submission
+          setValue('patientAge', finalAge);
+          setValue('patientName', newPatient.fullName || '');
+          setValue('patientGender', newPatient.gender as any);
+      }
+  }, [newPatient.dateOfBirth, newPatient.fullName, newPatient.gender, patientMode, setValue]);
 
   const handleCopyFromHistory = (rx: Prescription) => {
       setValue('diagnosis', rx.diagnosis);

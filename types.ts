@@ -1,4 +1,5 @@
 
+
 export enum UserRole {
   DOCTOR = 'DOCTOR',
   PHARMACY = 'PHARMACY',
@@ -54,17 +55,17 @@ export interface DbConfig {
 export interface InventoryItem {
   id: string;
   name: string;
-  genericName?: string; // Added for Quick Add & Search
+  genericName?: string; 
   manufacturer: string;
   batchNumber: string;
   barcode?: string;
   expiryDate: string;
   stock: number;
   minStockLevel: number;
-  purchasePrice: number; // Cost to pharmacy
-  mrp: number; // Selling price
-  unitPrice?: number; // Deprecated, use mrp
-  isNarcotic: boolean; // Controlled substance flag
+  purchasePrice: number; 
+  mrp: number; 
+  unitPrice?: number; 
+  isNarcotic: boolean; 
   gstPercentage?: number;
   hsnCode?: string;
 }
@@ -81,7 +82,7 @@ export interface DoctorDirectoryEntry {
 
 export interface Patient {
   id: string;
-  doctorId: string; // Links patient to the specific doctor
+  doctorId: string; 
   fullName: string;
   dateOfBirth: string;
   gender: 'Male' | 'Female' | 'Other';
@@ -89,14 +90,12 @@ export interface Patient {
   address: string;
   emergencyContact?: string;
   
-  // Vitals & Physical
-  height?: string; // cm
-  weight?: string; // kg
+  height?: string; 
+  weight?: string; 
   bloodGroup?: string;
 
-  // Medical History
-  allergies: string[]; // Drug, Food, etc.
-  chronicConditions: string[]; // Diabetes, HTN, etc.
+  allergies: string[]; 
+  chronicConditions: string[]; 
   pastSurgeries?: string;
   currentMedications?: string;
   familyHistory?: string;
@@ -111,22 +110,19 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  password?: string; // For mock auth only
+  password?: string; 
   role: UserRole;
   verificationStatus: VerificationStatus;
   registrationDate: string;
   
-  // Common License info
   licenseNumber?: string;
   state?: string;
-  gstin?: string; // Added for Pharmacy GST Compliance
+  gstin?: string; 
   
-  // Documents
   documents?: UserDocument[];
 
-  // Doctor Specific Extended Profile
-  qualifications?: string; // e.g. MBBS, MD
-  nmrUid?: string; // National Medical Register UID
+  qualifications?: string; 
+  nmrUid?: string; 
   clinicName?: string;
   clinicAddress?: string;
   city?: string;
@@ -136,16 +132,13 @@ export interface User {
   stateCouncil?: string;
   specialty?: string;
 
-  // Pharmacy specific
   inventory?: InventoryItem[];
   doctorDirectory?: DoctorDirectoryEntry[];
 
-  // Termination details
   terminatedAt?: string | null;
   terminatedBy?: string | null;
   terminationReason?: string | null;
 
-  // Security
   forcePasswordChange?: boolean;
 }
 
@@ -160,10 +153,10 @@ export interface AdminUser {
 
 export interface DoctorProfile {
   devxId: string;
-  medicalDegree: string; // Primary degree (dropdown)
-  qualifications: string; // Full string: MBBS, MD (Ent)
+  medicalDegree: string; 
+  qualifications: string; 
   registrationNumber: string;
-  nmrUid: string; // National Medical Register UID
+  nmrUid: string; 
   stateCouncil: string;
   specialty?: string;
   clinicName: string;
@@ -178,13 +171,12 @@ export interface DoctorProfile {
 
 export interface Medicine {
   name: string;
-  dosage: string; // e.g., 500mg
-  frequency: string; // e.g., 1-0-1
-  duration: string; // e.g., 5 days
-  instructions: string; // e.g., After food
+  dosage: string; 
+  frequency: string; 
+  duration: string; 
+  instructions: string; 
 }
 
-// Snapshot of doctor details at the time of prescription
 export interface DoctorDetailsSnapshot {
   name: string;
   qualifications: string;
@@ -205,33 +197,76 @@ export interface DoctorDetailsSnapshot {
 export interface Prescription {
   id: string;
   doctorId: string;
-  doctorName: string; // Kept for backward compatibility/searches
-  doctorDetails?: DoctorDetailsSnapshot; // Full snapshot
-  patientId?: string; // Link to Patient Profile
+  doctorName: string; 
+  doctorDetails?: DoctorDetailsSnapshot; 
+  patientId?: string; 
   patientName: string;
   patientAge: number;
   patientGender: 'Male' | 'Female' | 'Other';
   diagnosis: string;
   medicines: Medicine[];
   advice: string;
-  date: string; // ISO string
+  date: string; 
   status: 'ISSUED' | 'DISPENSED' | 'REJECTED' | 'CANCELLED' | 'REJECTED_STOCK' | 'SENT_TO_PHARMACY';
   pharmacyId?: string;
   pharmacyName?: string;
   digitalSignatureToken: string;
   
-  // New Fields
   refills?: number;
   followUpDate?: string;
 }
 
 export interface PrescriptionTemplate {
     id: string;
-    name: string; // Template Name (e.g. "Viral Fever")
+    name: string; 
     doctorId: string;
     diagnosis: string;
     medicines: Medicine[];
     advice: string;
+}
+
+export interface LabReferral {
+  id: string;
+  patientId: string;
+  patientName: string;
+  doctorId: string;
+  doctorName: string;
+  testName: string;
+  labName?: string;
+  date: string;
+  status: 'PENDING' | 'COMPLETED';
+  reportUrl?: string; 
+  notes?: string;
+}
+
+// --- NEW: Appointments & Certificates ---
+
+export interface Appointment {
+  id: string;
+  doctorId: string;
+  patientId: string;
+  patientName: string;
+  patientGender?: string;
+  patientAge?: number;
+  date: string; // ISO Date String
+  timeSlot: string; // e.g. "10:30 AM"
+  status: 'SCHEDULED' | 'WAITING' | 'IN_CONSULT' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
+  type: 'VISIT' | 'VIDEO' | 'FOLLOW_UP';
+  reason?: string;
+}
+
+export interface MedicalCertificate {
+  id: string;
+  doctorId: string;
+  patientId: string;
+  patientName: string;
+  type: 'SICK_LEAVE' | 'FITNESS' | 'REFERRAL';
+  issueDate: string;
+  startDate?: string; // For Sick Leave
+  endDate?: string;   // For Sick Leave
+  restDays?: number;
+  diagnosis?: string;
+  remarks: string;
 }
 
 export interface VerificationError {
@@ -256,7 +291,7 @@ export interface Supplier {
   email?: string;
   gstin?: string;
   address?: string;
-  balance: number; // Positive = We owe them
+  balance: number; 
 }
 
 export interface Customer {
@@ -265,7 +300,7 @@ export interface Customer {
   phone: string;
   email?: string;
   address?: string;
-  balance: number; // Positive = They owe us
+  balance: number; 
 }
 
 export interface SaleItem {
@@ -274,8 +309,8 @@ export interface SaleItem {
   batchNumber: string;
   expiryDate: string;
   quantity: number;
-  mrp: number; // Unit Selling Price
-  costPrice: number; // Unit Cost Price (for profit calc)
+  mrp: number; 
+  costPrice: number; 
   gstPercentage: number;
   discount: number;
   total: number;
@@ -284,7 +319,7 @@ export interface SaleItem {
 export interface Sale {
   id: string;
   invoiceNumber: string;
-  date: string; // ISO
+  date: string; 
   customerId?: string;
   customerName?: string;
   items: SaleItem[];
@@ -292,8 +327,8 @@ export interface Sale {
   gstAmount: number;
   discountAmount: number;
   roundedTotal: number;
-  amountPaid?: number; // Actual amount received
-  balanceDue?: number; // Amount remaining (Credit)
+  amountPaid?: number; 
+  balanceDue?: number; 
   paymentMode: 'CASH' | 'UPI' | 'CARD' | 'CREDIT' | 'PARTIAL';
   pharmacyId: string;
 }
@@ -301,10 +336,10 @@ export interface Sale {
 export interface SalesReturn {
     id: string;
     originalInvoiceId: string;
-    invoiceNumber: string; // Original Inv Num
+    invoiceNumber: string; 
     date: string;
     customerName: string;
-    items: SaleItem[]; // Items being returned
+    items: SaleItem[]; 
     refundAmount: number;
     reason: string;
 }
@@ -336,7 +371,7 @@ export interface GRN {
 export interface Expense {
     id: string;
     date: string;
-    category: string; // Rent, Salary, Utility, etc.
+    category: string; 
     description: string;
     amount: number;
     pharmacyId: string;

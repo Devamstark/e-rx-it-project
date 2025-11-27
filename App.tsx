@@ -5,7 +5,7 @@ import { Login } from './components/auth/Login';
 import { DoctorDashboard } from './components/doctor/DoctorDashboard';
 import { PharmacyDashboard } from './components/pharmacy/PharmacyDashboard';
 import { AdminDashboard } from './components/admin/AdminDashboard';
-import { User, UserRole, VerificationStatus, DoctorProfile, Prescription, Patient, AuditLog, SalesReturn } from './types';
+import { User, UserRole, VerificationStatus, DoctorProfile, Prescription, Patient, AuditLog, SalesReturn, LabReferral, Appointment, MedicalCertificate } from './types';
 import { dbService } from './services/db';
 import { Loader2, Clock, LogOut } from 'lucide-react';
 import { DocumentationViewer } from './components/ui/DocumentationViewer';
@@ -25,6 +25,9 @@ function App() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [salesReturns, setSalesReturns] = useState<SalesReturn[]>([]);
+  const [labReferrals, setLabReferrals] = useState<LabReferral[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [certificates, setCertificates] = useState<MedicalCertificate[]>([]);
 
   // Session Management State
   const [showSessionWarning, setShowSessionWarning] = useState(false);
@@ -79,12 +82,15 @@ function App() {
   // --- Initialization & Session Restore ---
   useEffect(() => {
       const init = async () => {
-          const { users, rx, patients: loadedPatients, auditLogs: loadedLogs } = await dbService.loadData();
+          const { users, rx, patients: loadedPatients, auditLogs: loadedLogs, labReferrals: loadedLabs, appointments: loadedApts, certificates: loadedCerts } = await dbService.loadData();
           setRegisteredUsers(users);
           setPrescriptions(rx);
           setPatients(loadedPatients);
           setAuditLogs(loadedLogs);
+          setLabReferrals(loadedLabs);
           setSalesReturns(dbService.getSalesReturns()); // Load returns
+          setAppointments(loadedApts);
+          setCertificates(loadedCerts);
 
           // Restore Session
           try {
@@ -136,6 +142,24 @@ function App() {
           dbService.saveSalesReturns(salesReturns);
       }
   }, [salesReturns, isLoaded]);
+  
+  useEffect(() => {
+      if (isLoaded) {
+          dbService.saveLabReferrals(labReferrals);
+      }
+  }, [labReferrals, isLoaded]);
+
+  useEffect(() => {
+      if (isLoaded) {
+          dbService.saveAppointments(appointments);
+      }
+  }, [appointments, isLoaded]);
+
+  useEffect(() => {
+      if (isLoaded) {
+          dbService.saveCertificates(certificates);
+      }
+  }, [certificates, isLoaded]);
 
   // Sync currentUser state with registeredUsers updates
   useEffect(() => {
@@ -250,6 +274,29 @@ function App() {
     setPatients(prev => prev.map(p => p.id === updatedPatient.id ? updatedPatient : p));
   };
 
+  const handleAddLabReferral = (referral: LabReferral) => {
+      setLabReferrals(prev => [referral, ...prev]);
+      if (currentUser) {
+        dbService.logSecurityAction(currentUser.id, 'LAB_REFERRAL', `Referral created for ${referral.patientName} (${referral.testName})`);
+      }
+  };
+
+  // Appointment Handlers with Logging
+  const handleAddAppointment = (apt: Appointment) => {
+      setAppointments(prev => [...prev, apt]);
+      if (currentUser) {
+          dbService.logSecurityAction(currentUser.id, 'APPOINTMENT_SCHEDULED', `Patient: ${apt.patientName} on ${apt.date}`);
+      }
+  };
+
+  const handleDeleteAppointment = (aptId: string) => {
+      const apt = appointments.find(a => a.id === aptId);
+      setAppointments(prev => prev.filter(a => a.id !== aptId));
+      if (currentUser && apt) {
+          dbService.logSecurityAction(currentUser.id, 'APPOINTMENT_DELETED', `Cancelled: ${apt.patientName} (${apt.date})`);
+      }
+  };
+
   const handleLogin = async (user: User) => {
     setCurrentUser(user);
     localStorage.setItem('devx_active_session_id', user.id);
@@ -318,6 +365,14 @@ function App() {
                     patients={patients}
                     onAddPatient={handleAddPatient}
                     onUpdatePatient={handleUpdatePatient}
+                    labReferrals={labReferrals}
+                    onAddLabReferral={handleAddLabReferral}
+                    appointments={appointments}
+                    onUpdateAppointment={(apt) => setAppointments(prev => prev.map(a => a.id === apt.id ? apt : a))}
+                    onAddAppointment={handleAddAppointment}
+                    onDeleteAppointment={handleDeleteAppointment}
+                    certificates={certificates}
+                    onAddCertificate={(cert) => setCertificates(prev => [cert, ...prev])}
                 />
             )}
             {currentUser.role === UserRole.PHARMACY && (

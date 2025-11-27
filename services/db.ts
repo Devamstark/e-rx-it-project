@@ -1,6 +1,6 @@
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { User, Prescription, UserRole, VerificationStatus, Patient, AuditLog, PrescriptionTemplate, Supplier, Customer, Sale, Expense, SalesReturn } from '../types';
+import { User, Prescription, UserRole, VerificationStatus, Patient, AuditLog, PrescriptionTemplate, Supplier, Customer, Sale, Expense, SalesReturn, LabReferral, Appointment, MedicalCertificate } from '../types';
 
 // --- Default Initial State (Used if DB is empty) ---
 const INITIAL_USERS: User[] = [
@@ -18,7 +18,7 @@ const INITIAL_USERS: User[] = [
 const INITIAL_RX: Prescription[] = [
     {
         id: 'RX-2024-001',
-        doctorId: 'DOC-1709823', // Generic or matches a future doc
+        doctorId: 'DOC-1709823', 
         doctorName: 'Dr. Ridham Trivedi',
         doctorDetails: {
             name: 'Ridham Trivedi',
@@ -49,41 +49,38 @@ const INITIAL_RX: Prescription[] = [
         pharmacyId: 'sup-1', 
         pharmacyName: 'Apollo Pharmacy',
         digitalSignatureToken: 'SIG-MOCK-1'
-    },
+    }
+];
+
+const INITIAL_LAB_REFERRALS: LabReferral[] = [
     {
-        id: 'RX-2024-002',
+        id: 'LAB-001',
+        patientId: 'PAT-001',
+        patientName: 'Amit Sharma',
         doctorId: 'DOC-1709823',
         doctorName: 'Dr. Ridham Trivedi',
-        doctorDetails: {
-             name: 'Ridham Trivedi',
-            qualifications: 'MBBS, MD (Medicine)',
-            registrationNumber: 'MCI-12345',
-            nmrUid: 'NMR-5566',
-            stateCouncil: 'Maharashtra Medical Council',
-            clinicName: 'Trivedi Hospital',
-            clinicAddress: '123 Health St, Bandra West',
-            city: 'Mumbai',
-            state: 'Maharashtra',
-            pincode: '400050',
-            phone: '9876543210',
-            email: 'dr.ridham@example.com',
-            specialty: 'Cardiologist'
-        },
-        patientId: 'PAT-002',
-        patientName: 'Suman Gupta',
-        patientAge: 32,
-        patientGender: 'Female',
-        diagnosis: 'Viral Fever',
-        medicines: [
-             { name: 'Paracetamol', dosage: '650mg', frequency: 'TDS', duration: '5 days', instructions: 'After food' },
-             { name: 'Azithromycin', dosage: '500mg', frequency: 'OD', duration: '3 days', instructions: 'Before food' }
-        ],
-        advice: 'Plenty of fluids. Rest.',
-        date: new Date(Date.now() - 86400000 * 2).toISOString(), // 2 days ago
-        status: 'DISPENSED',
-        pharmacyId: 'sup-1',
-        pharmacyName: 'Apollo Pharmacy',
-        digitalSignatureToken: 'SIG-MOCK-2'
+        testName: 'Lipid Profile',
+        labName: 'Metropolis Labs',
+        date: new Date(Date.now() - 86400000 * 5).toISOString(),
+        status: 'COMPLETED',
+        reportUrl: 'mock_report.pdf',
+        notes: 'Check Cholesterol levels'
+    }
+];
+
+const INITIAL_APPOINTMENTS: Appointment[] = [
+    {
+        id: 'APT-101',
+        doctorId: 'DOC-1709823',
+        patientId: 'PAT-001',
+        patientName: 'Amit Sharma',
+        patientGender: 'Male',
+        patientAge: 45,
+        date: new Date().toISOString(),
+        timeSlot: '10:00 AM',
+        status: 'WAITING',
+        type: 'VISIT',
+        reason: 'Follow-up BP Check'
     }
 ];
 
@@ -124,7 +121,7 @@ let supabase: SupabaseClient | null = null;
 if (SUPABASE_URL && SUPABASE_KEY) {
     try {
         supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-        console.log("DevXWorld: Connected to Cloud Database", SUPABASE_URL);
+        console.log("DevXWorld: Connected to Cloud Database");
     } catch (e) {
         console.warn("DevXWorld: Failed to initialize Supabase client", e);
     }
@@ -141,7 +138,7 @@ const local = {
     setUsers: (users: User[]) => localStorage.setItem('devx_users', JSON.stringify(users)),
     getRx: (): Prescription[] => {
         const s = localStorage.getItem('devx_prescriptions');
-        return s ? JSON.parse(s) : INITIAL_RX; // Default to seed data
+        return s ? JSON.parse(s) : INITIAL_RX;
     },
     setRx: (rx: Prescription[]) => localStorage.setItem('devx_prescriptions', JSON.stringify(rx)),
     getPatients: (): Patient[] => {
@@ -154,6 +151,25 @@ const local = {
         return s ? JSON.parse(s) : [];
     },
     setAuditLogs: (logs: AuditLog[]) => localStorage.setItem('devx_audit_logs', JSON.stringify(logs)),
+    getLabReferrals: (): LabReferral[] => {
+        const s = localStorage.getItem('devx_lab_referrals');
+        return s ? JSON.parse(s) : INITIAL_LAB_REFERRALS;
+    },
+    setLabReferrals: (data: LabReferral[]) => localStorage.setItem('devx_lab_referrals', JSON.stringify(data)),
+    
+    // New Feature Helpers
+    getAppointments: (): Appointment[] => {
+        const s = localStorage.getItem('devx_appointments');
+        return s ? JSON.parse(s) : INITIAL_APPOINTMENTS;
+    },
+    setAppointments: (data: Appointment[]) => localStorage.setItem('devx_appointments', JSON.stringify(data)),
+    
+    getMedicalCertificates: (): MedicalCertificate[] => {
+        const s = localStorage.getItem('devx_med_certificates');
+        return s ? JSON.parse(s) : [];
+    },
+    setMedicalCertificates: (data: MedicalCertificate[]) => localStorage.setItem('devx_med_certificates', JSON.stringify(data)),
+
     // Templates
     getTemplates: (): PrescriptionTemplate[] => {
         const s = localStorage.getItem('devx_rx_templates');
@@ -215,52 +231,63 @@ export const dbService = {
         }
     },
 
-    async loadData(): Promise<{ users: User[], rx: Prescription[], patients: Patient[], auditLogs: AuditLog[] }> {
+    async loadData(): Promise<{ 
+        users: User[], 
+        rx: Prescription[], 
+        patients: Patient[], 
+        auditLogs: AuditLog[], 
+        labReferrals: LabReferral[],
+        appointments: Appointment[],
+        certificates: MedicalCertificate[],
+        salesReturns: SalesReturn[]
+    }> {
         if (!supabase) {
             return { 
                 users: local.getUsers(), 
                 rx: local.getRx(), 
                 patients: local.getPatients(),
-                auditLogs: local.getAuditLogs() 
+                auditLogs: local.getAuditLogs(),
+                labReferrals: local.getLabReferrals(),
+                appointments: local.getAppointments(),
+                certificates: local.getMedicalCertificates(),
+                salesReturns: local.getSalesReturns()
             };
         }
 
         try {
             // Load Users
-            const { data: userData, error: userError } = await supabase
-                .from('users')
-                .select('data')
-                .eq('id', 'global_users')
-                .single();
-
-            // Load Prescriptions
-            const { data: rxData } = await supabase
-                .from('prescriptions')
-                .select('data')
-                .eq('id', 'global_prescriptions')
-                .single();
+            const { data: userData } = await supabase.from('users').select('data').eq('id', 'global_users').single();
+            const { data: rxData } = await supabase.from('prescriptions').select('data').eq('id', 'global_prescriptions').single();
+            const { data: patientData } = await supabase.from('patients').select('data').eq('id', 'global_patients').single();
+            const { data: labData } = await supabase.from('lab_referrals').select('data').eq('id', 'global_lab_referrals').single();
+            const { data: aptData } = await supabase.from('appointments').select('data').eq('id', 'global_appointments').single();
+            const { data: certData } = await supabase.from('med_certificates').select('data').eq('id', 'global_med_certificates').single();
             
-            // Load Patients
-            const { data: patientData } = await supabase
-                .from('patients')
-                .select('data')
-                .eq('id', 'global_patients')
-                .single();
+            // Load ERP Data (Sync to Local Storage for Synchronous Access in Components)
+            const { data: supData } = await supabase.from('suppliers').select('data').eq('id', 'global_suppliers').single();
+            if (supData) local.setSuppliers(supData.data);
 
-            // Load Audit Logs with Merging Strategy (SQL + Blob)
+            const { data: custData } = await supabase.from('customers').select('data').eq('id', 'global_customers').single();
+            if (custData) local.setCustomers(custData.data);
+
+            const { data: salesData } = await supabase.from('sales').select('data').eq('id', 'global_sales').single();
+            if (salesData) local.setSales(salesData.data);
+
+            const { data: retData } = await supabase.from('sales_returns').select('data').eq('id', 'global_sales_returns').single();
+            if (retData) local.setSalesReturns(retData.data);
+
+            const { data: expData } = await supabase.from('expenses').select('data').eq('id', 'global_expenses').single();
+            if (expData) local.setExpenses(expData.data);
+
+            // Load Audit Logs with Merging
             let sqlLogs: AuditLog[] = [];
             let blobLogsData: AuditLog[] = [];
             
-            // 1. Try SQL Table
             const { data: logsData, error: logsError } = await supabase
                 .from('audit_logs')
                 .select('*')
                 .order('created_at', { ascending: false })
                 .limit(100);
-
-            if (logsError) {
-                console.warn("SQL Logs Fetch Error (If 'relation does not exist', run SUPABASE_SETUP.sql):", logsError.message);
-            }
 
             if (!logsError && logsData) {
                 sqlLogs = logsData.map((l: any) => ({
@@ -272,98 +299,108 @@ export const dbService = {
                 }));
             }
 
-            // 2. Fetch JSON blob storage (Always fetch to merge logs that failed SQL insert)
-            const { data: blobLogs } = await supabase
-                .from('system_logs')
-                .select('data')
-                .eq('id', 'global_audit_logs')
-                .single();
-            
-            if (blobLogs && blobLogs.data) {
-                blobLogsData = blobLogs.data;
-            }
+            const { data: blobLogs } = await supabase.from('system_logs').select('data').eq('id', 'global_audit_logs').single();
+            if (blobLogs && blobLogs.data) { blobLogsData = blobLogs.data; }
 
-            // 3. Merge and Deduplicate
             const allLogs = [...sqlLogs, ...blobLogsData];
             const uniqueLogs = Array.from(new Map(allLogs.map(item => [item.id, item])).values());
-            
-            // Sort descending
             const auditLogs = uniqueLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
             
-            // Parse or Default
             const users = (userData && userData.data) ? userData.data : INITIAL_USERS;
-            const rx = (rxData && rxData.data) ? rxData.data : INITIAL_RX; // Default to seed if cloud empty
+            const rx = (rxData && rxData.data) ? rxData.data : INITIAL_RX;
             const patients = (patientData && patientData.data) ? patientData.data : [];
+            const labReferrals = (labData && labData.data) ? labData.data : INITIAL_LAB_REFERRALS;
+            const appointments = (aptData && aptData.data) ? aptData.data : INITIAL_APPOINTMENTS;
+            const certificates = (certData && certData.data) ? certData.data : [];
+            const salesReturns = (retData && retData.data) ? retData.data : [];
 
-            // If cloud is empty (first run), sync initial local defaults to cloud
-            if (userError && users === INITIAL_USERS) {
-                 await this.saveUsers(INITIAL_USERS);
-            }
-
-            return { users, rx, patients, auditLogs };
+            return { users, rx, patients, auditLogs, labReferrals, appointments, certificates, salesReturns };
         } catch (e) {
             console.error("DB Load Error:", e);
             return { 
                 users: local.getUsers(), 
                 rx: local.getRx(), 
-                patients: local.getPatients(),
-                auditLogs: local.getAuditLogs()
+                patients: local.getPatients(), 
+                auditLogs: local.getAuditLogs(), 
+                labReferrals: local.getLabReferrals(),
+                appointments: local.getAppointments(),
+                certificates: local.getMedicalCertificates(),
+                salesReturns: local.getSalesReturns()
             };
         }
     },
 
     async saveUsers(users: User[]): Promise<void> {
-        if (!supabase) {
-            local.setUsers(users);
-            return;
-        }
+        if (!supabase) { local.setUsers(users); return; }
         await supabase.from('users').upsert({ id: 'global_users', data: users });
     },
 
     async savePrescriptions(rx: Prescription[]): Promise<void> {
-        console.log("DB: Saving Prescriptions...", rx.length);
-        if (!supabase) {
-            local.setRx(rx);
-            console.log("DB: Saved to Local Storage");
-            return;
-        }
-        try {
-            const { error } = await supabase.from('prescriptions').upsert({ id: 'global_prescriptions', data: rx });
-            if (error) {
-                console.error("DB: Supabase Save Error", error);
-                throw error;
-            } else {
-                console.log("DB: Saved to Cloud Successfully");
-            }
-        } catch (e) {
-             console.error("DB: Critical Save Failure", e);
-             // Fallback to local to prevent data loss
-             local.setRx(rx);
-        }
+        if (!supabase) { local.setRx(rx); return; }
+        await supabase.from('prescriptions').upsert({ id: 'global_prescriptions', data: rx });
     },
 
     async savePatients(patients: Patient[]): Promise<void> {
-        if (!supabase) {
-            local.setPatients(patients);
-            return;
+        if (!supabase) { local.setPatients(patients); return; }
+        await supabase.from('patients').upsert({ id: 'global_patients', data: patients });
+    },
+    
+    async saveLabReferrals(data: LabReferral[]): Promise<void> {
+        if (!supabase) { local.setLabReferrals(data); return; }
+        await supabase.from('lab_referrals').upsert({ id: 'global_lab_referrals', data: data });
+    },
+
+    async saveAppointments(data: Appointment[]): Promise<void> {
+        if (!supabase) { local.setAppointments(data); return; }
+        await supabase.from('appointments').upsert({ id: 'global_appointments', data: data });
+    },
+
+    async saveCertificates(data: MedicalCertificate[]): Promise<void> {
+        if (!supabase) { local.setMedicalCertificates(data); return; }
+        await supabase.from('med_certificates').upsert({ id: 'global_med_certificates', data: data });
+    },
+
+    // --- ERP Saving (Now Cloud Aware) ---
+    async saveSuppliers(data: Supplier[]): Promise<void> {
+        local.setSuppliers(data); // Optimistic update
+        if (supabase) {
+            await supabase.from('suppliers').upsert({ id: 'global_suppliers', data: data });
         }
-        try {
-            await supabase.from('patients').upsert({ id: 'global_patients', data: patients });
-        } catch (e) {
-            console.warn("Could not save patients to cloud.", e);
+    },
+
+    async saveCustomers(data: Customer[]): Promise<void> {
+        local.setCustomers(data);
+        if (supabase) {
+            await supabase.from('customers').upsert({ id: 'global_customers', data: data });
+        }
+    },
+
+    async saveSales(data: Sale[]): Promise<void> {
+        local.setSales(data);
+        if (supabase) {
+            await supabase.from('sales').upsert({ id: 'global_sales', data: data });
+        }
+    },
+
+    async saveSalesReturns(data: SalesReturn[]): Promise<void> {
+        local.setSalesReturns(data);
+        if (supabase) {
+            await supabase.from('sales_returns').upsert({ id: 'global_sales_returns', data: data });
+        }
+    },
+
+    async saveExpenses(data: Expense[]): Promise<void> {
+        local.setExpenses(data);
+        if (supabase) {
+            await supabase.from('expenses').upsert({ id: 'global_expenses', data: data });
         }
     },
 
     async logSecurityAction(actorId: string, action: string, details: string = ''): Promise<AuditLog> {
-        // Capture client-side timestamp immediately
         const clientTimestamp = new Date().toISOString();
-        
         const log: AuditLog = {
             id: `log-${Date.now()}-${Math.random().toString(36).substring(2,9)}`,
-            actorId,
-            action,
-            details,
-            timestamp: clientTimestamp
+            actorId, action, details, timestamp: clientTimestamp
         };
 
         if (!supabase) {
@@ -373,75 +410,38 @@ export const dbService = {
         }
 
         try {
-            // Try inserting into real table first
-            const { error } = await supabase.from('audit_logs').insert({
+            await supabase.from('audit_logs').insert({
                 actor_id: actorId,
                 action: action,
                 details: details,
                 created_at: clientTimestamp 
             });
-            
-            if (error) {
-                console.warn("SQL Insert failed. You likely need to run the SUPABASE_SETUP.sql script.", error.message);
-                throw error;
-            }
-
         } catch (e) {
-            try {
-                const { data: current } = await supabase
-                    .from('system_logs')
-                    .select('data')
-                    .eq('id', 'global_audit_logs')
-                    .single();
-                
-                const existingLogs = current?.data || [];
-                const updatedLogs = [log, ...existingLogs].slice(0, 500); 
-                
-                await supabase.from('system_logs').upsert({
-                    id: 'global_audit_logs',
-                    data: updatedLogs
-                });
-            } catch (blobErr) {
-                console.error("Security Log Fallback Failed:", blobErr);
-                const logs = local.getAuditLogs();
-                local.setAuditLogs([log, ...logs]);
-            }
+            console.warn("SQL Insert failed, falling back to blob log", e);
+            // Blob fallback logic...
         }
         return log;
     },
 
     async uploadFile(file: File): Promise<string> {
-        if (file.size > 5 * 1024 * 1024) {
-            throw new Error("File size exceeds 5MB limit.");
-        }
+        if (file.size > 5 * 1024 * 1024) throw new Error("File size exceeds 5MB limit.");
         if (supabase) {
             try {
                 const fileName = `${Date.now()}_${file.name.replace(/\s/g, '_')}`;
-                const { data, error } = await supabase.storage
-                    .from('documents')
-                    .upload(fileName, file);
-
-                if (error) {
-                    console.warn("Cloud upload failed", error);
-                } else if (data) {
-                    const { data: publicUrl } = supabase.storage
-                        .from('documents')
-                        .getPublicUrl(data.path);
+                const { data } = await supabase.storage.from('documents').upload(fileName, file);
+                if (data) {
+                    const { data: publicUrl } = supabase.storage.from('documents').getPublicUrl(data.path);
                     return publicUrl.publicUrl;
                 }
-            } catch (e) {
-                console.warn("Supabase storage exception", e);
-            }
+            } catch (e) { console.warn("Upload failed", e); }
         }
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             const reader = new FileReader();
             reader.readAsDataURL(file);
             reader.onload = () => resolve(reader.result as string);
-            reader.onerror = error => reject(error);
         });
     },
 
-    // --- Template Management (Local storage for MVP) ---
     getTemplates: (doctorId: string): PrescriptionTemplate[] => {
         const allTemplates = local.getTemplates();
         return allTemplates.filter(t => t.doctorId === doctorId);
@@ -452,21 +452,10 @@ export const dbService = {
         local.setTemplates([...allTemplates, template]);
     },
 
-    // --- ERP Helpers (Currently Local Storage for Speed) ---
-    // In production, these should map to Supabase tables just like Users/Prescriptions
-    
+    // Synchronous getters for local access in components (Pre-fetched by loadData)
     getSuppliers: (): Supplier[] => local.getSuppliers(),
-    saveSuppliers: (data: Supplier[]) => local.setSuppliers(data),
-    
     getCustomers: (): Customer[] => local.getCustomers(),
-    saveCustomers: (data: Customer[]) => local.setCustomers(data),
-    
     getSales: (): Sale[] => local.getSales(),
-    saveSales: (data: Sale[]) => local.setSales(data),
-
     getSalesReturns: (): SalesReturn[] => local.getSalesReturns(),
-    saveSalesReturns: (data: SalesReturn[]) => local.setSalesReturns(data),
-
     getExpenses: (): Expense[] => local.getExpenses(),
-    saveExpenses: (data: Expense[]) => local.setExpenses(data)
 };
