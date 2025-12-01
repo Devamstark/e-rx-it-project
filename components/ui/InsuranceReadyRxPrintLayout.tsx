@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { Prescription, Patient, User, DoctorDetailsSnapshot } from '../../types';
-import { Printer, QrCode, ShieldCheck, FileText, Download } from 'lucide-react';
+import { Printer, QrCode, ShieldCheck, FileText, Download, ArrowLeft } from 'lucide-react';
 
 interface Props {
   prescription: Prescription;
@@ -12,6 +12,63 @@ interface Props {
   onPrint?: () => void;
   onGenerateQR?: () => void;
 }
+
+const getFrequencyDescription = (freq: string): string => {
+    if (!freq) return '';
+    const clean = freq.trim().toUpperCase();
+    if (clean === '1-0-0' || clean === '1' || clean === 'OD') return 'Once a day (Morning)';
+    if (clean === '0-0-1' || clean === 'HS') return 'Once a day (Night)';
+    if (clean === '1-0-1' || clean === 'BD' || clean === 'BID') return 'Twice a day';
+    if (clean === '1-1-1' || clean === 'TDS' || clean === 'TID') return 'Thrice a day';
+    if (clean === '1-1-1-1' || clean === 'QID') return 'Four times a day';
+    if (clean === 'SOS') return 'As needed';
+    if (clean === 'STAT') return 'Immediately';
+    if (clean === '0-1-0') return 'Once a day (Afternoon)';
+    // Handle patterns like 1-1-1
+    if (/^\d+(-\d+)+$/.test(clean)) {
+       const sum = clean.split('-').reduce((a,b) => a + (parseInt(b)||0), 0);
+       return `${sum} times a day`;
+    }
+    return '';
+};
+
+const parseDuration = (duration: string) => {
+    if (!duration) return { display: '', days: 0 };
+    const clean = duration.trim();
+    // If just a number, assume days
+    if (/^\d+$/.test(clean)) {
+        return { display: `${clean} Days`, days: parseInt(clean, 10) };
+    }
+    // Try to extract number if string like "5 days"
+    const match = clean.match(/^(\d+)/);
+    const days = match ? parseInt(match[1], 10) : 0;
+    
+    // Adjust logic if unit is weeks or months (simple approximation)
+    if (clean.toLowerCase().includes('week')) return { display: clean, days: days * 7 };
+    if (clean.toLowerCase().includes('month')) return { display: clean, days: days * 30 };
+    
+    return { display: clean, days: days };
+};
+
+const calculateTotalQty = (freq: string, durationDays: number) => {
+    if (!freq || !durationDays) return '-';
+    const clean = freq.trim().toUpperCase();
+    let daily = 0;
+    
+    // Check pattern X-X-X
+    if (/^\d+(-\d+)+$/.test(clean)) {
+        daily = clean.split('-').reduce((a, b) => a + (parseInt(b) || 0), 0);
+    } else {
+        if (['OD','1','HS','0-0-1','1-0-0','0-1-0'].includes(clean)) daily = 1;
+        else if (['BD','BID','1-0-1'].includes(clean)) daily = 2;
+        else if (['TDS','TID','1-1-1'].includes(clean)) daily = 3;
+        else if (['QID','1-1-1-1'].includes(clean)) daily = 4;
+        else if (clean === 'STAT') daily = 1; // 1 dose
+    }
+    
+    if (daily === 0) return '-';
+    return daily * durationDays;
+};
 
 export const InsuranceReadyRxPrintLayout: React.FC<Props> = ({
   prescription,
@@ -27,7 +84,6 @@ export const InsuranceReadyRxPrintLayout: React.FC<Props> = ({
   const [dispenseAsWritten, setDispenseAsWritten] = useState(false);
 
   // Generate verification URL dynamically based on current origin, defaulting to production
-  // This ensures that even if on a preview URL, the QR code points to the real domain
   const origin = typeof window !== 'undefined' && window.location.hostname === 'localhost' 
       ? window.location.origin 
       : 'https://erxdevx.vercel.app';
@@ -81,20 +137,21 @@ export const InsuranceReadyRxPrintLayout: React.FC<Props> = ({
         <style dangerouslySetInnerHTML={{__html: `
             @media print {
                 @page { size: A4; margin: 0; }
+                html, body { height: 100%; margin: 0 !important; padding: 0 !important; overflow: hidden; }
                 body * { visibility: hidden; }
                 #insurance-rx-print-container, #insurance-rx-print-container * { visibility: visible; }
                 #insurance-rx-print-container { 
                     visibility: visible !important;
-                    position: absolute; 
+                    position: fixed; 
                     left: 0; 
                     top: 0; 
                     width: 210mm; 
-                    min-height: 297mm; 
+                    height: 297mm; /* Force exact A4 height */
                     margin: 0; 
                     padding: 15mm; 
                     background: white;
-                    box-shadow: none;
-                    overflow: visible;
+                    z-index: 9999;
+                    overflow: hidden; /* Clip overflow to prevent extra pages */
                 }
                 .no-print { display: none !important; }
                 input[type="text"] { border: none; padding: 0; }
@@ -131,10 +188,10 @@ export const InsuranceReadyRxPrintLayout: React.FC<Props> = ({
         {/* Paper Container - A4 Portrait */}
         <div 
             id="insurance-rx-print-container"
-            className="bg-white w-full max-w-[210mm] min-h-[297mm] p-10 shadow-2xl relative text-slate-900 box-border mx-auto"
+            className="bg-white w-full max-w-[210mm] min-h-[297mm] p-10 shadow-2xl relative text-slate-900 box-border mx-auto flex flex-col"
         >
             {/* Header: Clinic & Doctor Info */}
-            <header className="border-b-2 border-slate-800 pb-4 mb-6 flex justify-between items-start">
+            <header className="border-b-2 border-slate-800 pb-4 mb-6 flex justify-between items-start shrink-0">
                 <div className="w-7/12 pr-4">
                     <h1 className="text-2xl font-black uppercase tracking-tight text-slate-900 leading-tight mb-2 font-serif">
                         {doctor.clinicName || 'Clinic Name'}
@@ -162,7 +219,7 @@ export const InsuranceReadyRxPrintLayout: React.FC<Props> = ({
             </header>
 
             {/* Insurance & Patient Grid */}
-            <section className="mb-6 rounded border border-slate-300 overflow-hidden font-sans">
+            <section className="mb-6 rounded border border-slate-300 overflow-hidden font-sans shrink-0">
                 <div className="bg-slate-100 px-4 py-2 border-b border-slate-300 flex justify-between items-center">
                     <span className="text-[10px] font-bold uppercase text-slate-500">Patient Demographics & Insurance</span>
                     <span className="text-[10px] font-bold uppercase text-slate-500">Rx ID: <span className="text-slate-900 font-mono text-sm">{prescription.id}</span></span>
@@ -216,7 +273,7 @@ export const InsuranceReadyRxPrintLayout: React.FC<Props> = ({
             </section>
 
             {/* Clinical Notes */}
-            <div className="mb-6 px-1">
+            <div className="mb-6 px-1 shrink-0">
                 <div className="flex justify-between items-baseline mb-2">
                     <h3 className="text-xs font-bold uppercase text-slate-500 font-sans">Diagnosis & Vitals</h3>
                     <span className="text-[10px] text-slate-400">Date: {new Date(prescription.date).toLocaleString('en-IN', {dateStyle: 'medium', timeStyle: 'short'})} IST</span>
@@ -234,7 +291,7 @@ export const InsuranceReadyRxPrintLayout: React.FC<Props> = ({
             </div>
 
             {/* Medicine Table */}
-            <div className="mb-8">
+            <div className="mb-8 flex-1">
                 <div className="flex items-center mb-2">
                     <span className="text-4xl font-serif font-black italic mr-2 text-slate-900">Rx</span>
                 </div>
@@ -244,32 +301,48 @@ export const InsuranceReadyRxPrintLayout: React.FC<Props> = ({
                             <th className="py-2 w-5/12">Medicine Name & Strength</th>
                             <th className="py-2 w-2/12">Dosage</th>
                             <th className="py-2 w-2/12">Frequency</th>
-                            <th className="py-2 w-1/12">Duration</th>
-                            <th className="py-2 w-2/12">Instruction</th>
+                            <th className="py-2 w-2/12">Duration</th>
+                            <th className="py-2 w-1/12 text-center">Qty</th>
                         </tr>
                     </thead>
                     <tbody className="text-slate-800">
-                        {prescription.medicines.map((med, idx) => (
-                            <tr key={idx} className="border-b border-slate-200 align-top">
-                                <td className="py-3 pr-2">
-                                    <span className="font-bold block">{med.name}</span>
-                                </td>
-                                <td className="py-3 font-medium">{med.dosage}</td>
-                                <td className="py-3 font-medium">{med.frequency}</td>
-                                <td className="py-3 font-medium">{med.duration}</td>
-                                <td className="py-3 italic text-slate-600 text-xs leading-tight">{med.instructions}</td>
-                            </tr>
-                        ))}
+                        {prescription.medicines.map((med, idx) => {
+                            const freqDesc = getFrequencyDescription(med.frequency);
+                            const parsedDuration = parseDuration(med.duration);
+                            const totalQty = calculateTotalQty(med.frequency, parsedDuration.days);
+                            
+                            // Construct the full direction string that user wants
+                            const fullDirection = `Direction: Take ${med.dosage || '1 dose'}, ${freqDesc || med.frequency} for ${parsedDuration.display}${med.instructions ? '. ' + med.instructions : '.'}`;
+                            
+                            return (
+                                <React.Fragment key={idx}>
+                                    <tr className="border-b border-slate-100 align-top">
+                                        <td className="pt-3 pb-1 pr-2">
+                                            <span className="font-bold block text-base">{med.name}</span>
+                                        </td>
+                                        <td className="pt-3 pb-1 font-medium">{med.dosage}</td>
+                                        <td className="pt-3 pb-1 font-medium font-mono">{med.frequency}</td>
+                                        <td className="pt-3 pb-1 font-medium">{parsedDuration.display}</td>
+                                        <td className="pt-3 pb-1 font-bold text-center">{totalQty}</td>
+                                    </tr>
+                                    <tr className="border-b border-slate-300">
+                                        <td colSpan={5} className="pb-3 text-xs italic text-slate-600 pl-2 pt-0.5">
+                                            {fullDirection}
+                                        </td>
+                                    </tr>
+                                </React.Fragment>
+                            );
+                        })}
                     </tbody>
                 </table>
             </div>
 
             {/* Advice & Verification */}
-            <div className="grid grid-cols-2 gap-10 mb-8 font-sans">
+            <div className="grid grid-cols-2 gap-10 mb-8 font-sans shrink-0">
                 {/* Left: Advice */}
                 <div>
                     <h4 className="text-xs font-bold uppercase text-slate-500 mb-2">Advice / Remarks</h4>
-                    <p className="text-sm whitespace-pre-wrap leading-relaxed text-slate-800 min-h-[60px]">
+                    <p className="text-sm whitespace-pre-wrap leading-relaxed text-slate-800 min-h-[40px]">
                         {prescription.advice || 'Follow medication schedule strictly.'}
                     </p>
                     
@@ -299,7 +372,7 @@ export const InsuranceReadyRxPrintLayout: React.FC<Props> = ({
                 {/* Right: Verification & Sign */}
                 <div className="flex flex-col justify-between">
                     {/* Pharmacist Box */}
-                    <div className="border-2 border-dashed border-slate-300 p-3 rounded h-32 flex flex-col justify-between relative">
+                    <div className="border-2 border-dashed border-slate-300 p-2 rounded h-24 flex flex-col justify-between relative">
                         <span className="absolute top-0 right-0 bg-slate-100 text-[8px] uppercase font-bold px-2 py-0.5 rounded-bl">Pharmacy Use Only</span>
                         <h4 className="text-[10px] font-bold uppercase text-slate-400">Pharmacist Verification</h4>
                         <div className="mt-auto">
@@ -308,18 +381,15 @@ export const InsuranceReadyRxPrintLayout: React.FC<Props> = ({
                                 <span>Signature & Stamp</span>
                                 <span>Date</span>
                             </div>
-                            <div className="flex justify-between text-[9px] text-slate-400 mt-1">
-                                <span>Lic No: ________________</span>
-                            </div>
                         </div>
                     </div>
 
                     {/* Doctor Sign */}
-                    <div className="mt-6 text-right relative">
-                        <div className="h-16 flex items-end justify-end mb-1 relative">
+                    <div className="mt-4 text-right relative">
+                        <div className="h-12 flex items-end justify-end mb-1 relative">
                             {/* Seal Background */}
                             <div className="absolute right-0 bottom-2 opacity-10 print:opacity-20 pointer-events-none">
-                                <ShieldCheck className="w-20 h-20 text-indigo-900" />
+                                <ShieldCheck className="w-16 h-16 text-indigo-900" />
                             </div>
                             <span className="font-serif italic text-xl text-indigo-900 pr-4 z-10">Dr. {docName.split(' ').pop()}</span>
                         </div>
@@ -331,7 +401,7 @@ export const InsuranceReadyRxPrintLayout: React.FC<Props> = ({
             </div>
 
             {/* Footer with QR */}
-            <footer className="mt-auto pt-4 border-t-2 border-slate-100 flex items-center justify-between">
+            <footer className="mt-auto pt-4 border-t-2 border-slate-100 flex items-center justify-between shrink-0">
                 <div className="text-[9px] text-slate-400 font-sans max-w-md">
                     <p className="font-bold text-slate-600 mb-1">Generated via DevXWorld e-Rx Hub • Compliant with Pharmacy Act 1948, IT Act 2000 & DPDP Act 2023</p>
                     <p>This is a computer-generated e-prescription digitally signed by a Registered Medical Practitioner (RMP). Physical signature is not required as per IT Act 2000.</p>

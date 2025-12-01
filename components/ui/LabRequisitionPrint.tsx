@@ -44,18 +44,22 @@ export const LabRequisitionPrint: React.FC<Props> = ({ referral, onClose }) => {
             {/* Print Styles */}
             <style dangerouslySetInnerHTML={{__html: `
                 @media print {
+                    @page { size: A4; margin: 0; }
+                    html, body { height: 100%; margin: 0 !important; padding: 0 !important; overflow: hidden; }
                     body * { visibility: hidden; }
                     #lab-requisition-print, #lab-requisition-print * { visibility: visible; }
                     #lab-requisition-print { 
-                        position: absolute; 
+                        visibility: visible !important;
+                        position: fixed; 
                         left: 0; 
                         top: 0; 
-                        width: 100%; 
-                        min-height: 100%;
+                        width: 210mm; 
+                        height: 297mm; /* Force exact A4 height */
                         margin: 0; 
-                        padding: 10mm; 
+                        padding: 15mm; 
                         background: white; 
-                        box-shadow: none;
+                        z-index: 9999;
+                        overflow: hidden; /* Prevent multi-page spillover */
                     }
                     .no-print { display: none !important; }
                     /* Hide scrollbars during print */

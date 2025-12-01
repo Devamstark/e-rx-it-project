@@ -11,6 +11,34 @@ interface PrescriptionModalProps {
   isPharmacy?: boolean;
 }
 
+const getFrequencyDescription = (freq: string): string => {
+    if (!freq) return '';
+    const clean = freq.trim().toUpperCase();
+    if (clean === '1-0-0' || clean === '1' || clean === 'OD') return 'Once a day (Morning)';
+    if (clean === '0-0-1' || clean === 'HS') return 'Once a day (Night)';
+    if (clean === '1-0-1' || clean === 'BD' || clean === 'BID') return 'Twice a day';
+    if (clean === '1-1-1' || clean === 'TDS' || clean === 'TID') return 'Thrice a day';
+    if (clean === '1-1-1-1' || clean === 'QID') return 'Four times a day';
+    if (clean === 'SOS') return 'As needed';
+    if (clean === 'STAT') return 'Immediately';
+    if (clean === '0-1-0') return 'Once a day (Afternoon)';
+    // Handle numeric pattern
+    if (/^\d+(-\d+)+$/.test(clean)) {
+       const sum = clean.split('-').reduce((a,b) => a + (parseInt(b)||0), 0);
+       return `${sum} times a day`;
+    }
+    return '';
+};
+
+const parseDuration = (duration: string) => {
+    if (!duration) return { display: '', days: 0 };
+    const clean = duration.trim();
+    if (/^\d+$/.test(clean)) {
+        return { display: `${clean} Days`, days: parseInt(clean, 10) };
+    }
+    return { display: clean, days: 0 };
+};
+
 export const PrescriptionModal: React.FC<PrescriptionModalProps> = ({ 
   prescription, 
   onClose, 
@@ -207,19 +235,32 @@ ${prescription.medicines.map(m => `- ${m.name} (${m.dosage}) | ${m.frequency}`).
                     <th className="px-4 py-3 text-left font-bold text-slate-600">Dosage</th>
                     <th className="px-4 py-3 text-left font-bold text-slate-600">Frequency</th>
                     <th className="px-4 py-3 text-left font-bold text-slate-600">Duration</th>
-                    <th className="px-4 py-3 text-left font-bold text-slate-600">Instructions</th>
+                    <th className="px-4 py-3 text-left font-bold text-slate-600">Instruction & Direction</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {prescription.medicines.map((m, i) => (
-                    <tr key={i} className="hover:bg-slate-50">
-                      <td className="px-4 py-3 font-medium text-slate-900">{m.name}</td>
-                      <td className="px-4 py-3 text-slate-600">{m.dosage}</td>
-                      <td className="px-4 py-3 text-slate-600">{m.frequency}</td>
-                      <td className="px-4 py-3 text-slate-600">{m.duration}</td>
-                      <td className="px-4 py-3 text-slate-500 italic text-xs">{m.instructions || '-'}</td>
-                    </tr>
-                  ))}
+                  {prescription.medicines.map((m, i) => {
+                    const freqDesc = getFrequencyDescription(m.frequency);
+                    const parsedDuration = parseDuration(m.duration);
+                    // Generate friendly direction string similar to print layout
+                    const fullDirection = `Take ${m.dosage || '1 dose'}, ${freqDesc || m.frequency || 'as directed'} for ${parsedDuration.display}.`;
+                    
+                    return (
+                        <tr key={i} className="hover:bg-slate-50">
+                          <td className="px-4 py-3 font-medium text-slate-900">{m.name}</td>
+                          <td className="px-4 py-3 text-slate-600">{m.dosage}</td>
+                          <td className="px-4 py-3 text-slate-600">
+                              {m.frequency}
+                              {freqDesc && <div className="text-[10px] text-slate-400 italic">{freqDesc}</div>}
+                          </td>
+                          <td className="px-4 py-3 text-slate-600">{parsedDuration.display || m.duration}</td>
+                          <td className="px-4 py-3 text-slate-600 text-xs">
+                              <div className="font-medium text-slate-800 mb-1">{fullDirection}</div>
+                              {m.instructions && <div className="italic text-slate-500">{m.instructions}</div>}
+                          </td>
+                        </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
