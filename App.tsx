@@ -1,10 +1,7 @@
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, Suspense, lazy } from 'react';
 import { Layout } from './components/ui/Layout';
 import { Login } from './components/auth/Login';
-import { DoctorDashboard } from './components/doctor/DoctorDashboard';
-import { PharmacyDashboard } from './components/pharmacy/PharmacyDashboard';
-import { AdminDashboard } from './components/admin/AdminDashboard';
 import { RxVerification } from './components/public/RxVerification';
 import { LabReportUpload } from './components/public/LabReportUpload';
 import { User, UserRole, VerificationStatus, DoctorProfile, Prescription, Patient, AuditLog, SalesReturn, LabReferral, Appointment, MedicalCertificate } from './types';
@@ -12,9 +9,22 @@ import { dbService } from './services/db';
 import { Loader2, Clock, LogOut } from 'lucide-react';
 import { DocumentationViewer } from './components/ui/DocumentationViewer';
 
+// Dynamically import dashboard components for code-splitting
+const DoctorDashboard = lazy(() => import('./components/doctor/DoctorDashboard').then(module => ({ default: module.DoctorDashboard })));
+const PharmacyDashboard = lazy(() => import('./components/pharmacy/PharmacyDashboard').then(module => ({ default: module.PharmacyDashboard })));
+const AdminDashboard = lazy(() => import('./components/admin/AdminDashboard').then(module => ({ default: module.AdminDashboard })));
+
+
 // Session Timeout Constants
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 Minutes
 const WARNING_THRESHOLD_MS = 29.5 * 60 * 1000; // 29.5 Minutes (Warning 30s before)
+
+const LoadingFallback = () => (
+  <div className="flex items-center justify-center py-20">
+    <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+    <p className="ml-4 text-slate-500">Loading dashboard...</p>
+  </div>
+);
 
 function App() {
   // ROUTING LOGIC
@@ -412,55 +422,57 @@ function App() {
             />
         ) : (
             <div className="animate-in fade-in duration-500">
-            {currentUser.role === UserRole.DOCTOR && (
-                <DoctorDashboard 
-                    status={currentUser.verificationStatus} 
-                    onVerificationComplete={handleDoctorVerificationComplete}
+              <Suspense fallback={<LoadingFallback />}>
+                {currentUser.role === UserRole.DOCTOR && (
+                    <DoctorDashboard 
+                        status={currentUser.verificationStatus} 
+                        onVerificationComplete={handleDoctorVerificationComplete}
+                        prescriptions={prescriptions}
+                        onCreatePrescription={handleCreatePrescription}
+                        currentUser={currentUser}
+                        verifiedPharmacies={verifiedPharmacies}
+                        patients={patients}
+                        onAddPatient={handleAddPatient}
+                        onUpdatePatient={handleUpdatePatient}
+                        labReferrals={labReferrals}
+                        onAddLabReferral={handleAddLabReferral}
+                        onDeleteLabReferral={handleDeleteLabReferral}
+                        appointments={appointments}
+                        onUpdateAppointment={(apt) => setAppointments(prev => prev.map(a => a.id === apt.id ? apt : a))}
+                        onAddAppointment={handleAddAppointment}
+                        onDeleteAppointment={handleDeleteAppointment}
+                        certificates={certificates}
+                        onAddCertificate={(cert) => setCertificates(prev => [cert, ...prev])}
+                    />
+                )}
+                {currentUser.role === UserRole.PHARMACY && (
+                    <PharmacyDashboard 
+                        prescriptions={prescriptions}
+                        onDispense={handleDispensePrescription}
+                        onReject={handleRejectPrescription}
+                        currentUser={currentUser}
+                        onUpdateUser={handleUpdateUser}
+                        patients={patients}
+                        onAddPatient={handleAddPatient}
+                        onUpdatePatient={handleUpdatePatient}
+                        salesReturns={salesReturns}
+                        onAddSalesReturn={(ret) => setSalesReturns(prev => [ret, ...prev])}
+                    />
+                )}
+                {currentUser.role === UserRole.ADMIN && (
+                    <AdminDashboard 
+                    users={registeredUsers}
                     prescriptions={prescriptions}
-                    onCreatePrescription={handleCreatePrescription}
-                    currentUser={currentUser}
-                    verifiedPharmacies={verifiedPharmacies}
-                    patients={patients}
-                    onAddPatient={handleAddPatient}
-                    onUpdatePatient={handleUpdatePatient}
-                    labReferrals={labReferrals}
-                    onAddLabReferral={handleAddLabReferral}
-                    onDeleteLabReferral={handleDeleteLabReferral}
-                    appointments={appointments}
-                    onUpdateAppointment={(apt) => setAppointments(prev => prev.map(a => a.id === apt.id ? apt : a))}
-                    onAddAppointment={handleAddAppointment}
-                    onDeleteAppointment={handleDeleteAppointment}
-                    certificates={certificates}
-                    onAddCertificate={(cert) => setCertificates(prev => [cert, ...prev])}
-                />
-            )}
-            {currentUser.role === UserRole.PHARMACY && (
-                <PharmacyDashboard 
-                    prescriptions={prescriptions}
-                    onDispense={handleDispensePrescription}
-                    onReject={handleRejectPrescription}
-                    currentUser={currentUser}
-                    onUpdateUser={handleUpdateUser}
-                    patients={patients}
-                    onAddPatient={handleAddPatient}
-                    onUpdatePatient={handleUpdatePatient}
-                    salesReturns={salesReturns}
-                    onAddSalesReturn={(ret) => setSalesReturns(prev => [ret, ...prev])}
-                />
-            )}
-            {currentUser.role === UserRole.ADMIN && (
-                <AdminDashboard 
-                users={registeredUsers}
-                prescriptions={prescriptions}
-                onUpdateStatus={handleUpdateUserStatus}
-                onTerminateUser={handleTerminateUser}
-                onDeleteUser={handleDeleteUser}
-                onResetPassword={handleResetPassword}
-                onEditUser={handleUpdateUser}
-                auditLogs={auditLogs}
-                onAddDirectoryEntry={handleAddDirectoryEntry}
-                />
-            )}
+                    onUpdateStatus={handleUpdateUserStatus}
+                    onTerminateUser={handleTerminateUser}
+                    onDeleteUser={handleDeleteUser}
+                    onResetPassword={handleResetPassword}
+                    onEditUser={handleUpdateUser}
+                    auditLogs={auditLogs}
+                    onAddDirectoryEntry={handleAddDirectoryEntry}
+                    />
+                )}
+              </Suspense>
             </div>
         )}
         </Layout>
