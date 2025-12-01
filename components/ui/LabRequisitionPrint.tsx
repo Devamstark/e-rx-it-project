@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { LabReferral } from '../../types';
@@ -44,22 +43,23 @@ export const LabRequisitionPrint: React.FC<Props> = ({ referral, onClose }) => {
             {/* Print Styles */}
             <style dangerouslySetInnerHTML={{__html: `
                 @media print {
-                    @page { size: A4; margin: 0; }
-                    html, body { height: 100%; margin: 0 !important; padding: 0 !important; overflow: hidden; }
+                    @page { margin: 5mm; size: auto; }
+                    html, body { height: 100%; margin: 0 !important; padding: 0 !important; }
                     body * { visibility: hidden; }
                     #lab-requisition-print, #lab-requisition-print * { visibility: visible; }
                     #lab-requisition-print { 
                         visibility: visible !important;
-                        position: fixed; 
+                        position: absolute; 
                         left: 0; 
                         top: 0; 
-                        width: 210mm; 
-                        height: 297mm; /* Force exact A4 height */
+                        width: 100%; 
+                        min-height: 100%;
                         margin: 0; 
-                        padding: 10mm; /* Compact Padding */
+                        padding: 0;
                         background: white; 
                         z-index: 9999;
-                        overflow: hidden; /* Prevent multi-page spillover */
+                        display: flex;
+                        flex-direction: column;
                     }
                     .no-print { display: none !important; }
                     /* Hide scrollbars during print */

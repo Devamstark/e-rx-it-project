@@ -135,22 +135,23 @@ export const InsuranceReadyRxPrintLayout: React.FC<Props> = ({
         {/* Print Styles Injection */}
         <style dangerouslySetInnerHTML={{__html: `
             @media print {
-                @page { size: A4; margin: 0; }
-                html, body { height: 100%; margin: 0 !important; padding: 0 !important; overflow: hidden; }
+                @page { margin: 5mm; size: auto; }
+                html, body { height: 100%; margin: 0 !important; padding: 0 !important; }
                 body * { visibility: hidden; }
                 #insurance-rx-print-container, #insurance-rx-print-container * { visibility: visible; }
                 #insurance-rx-print-container { 
                     visibility: visible !important;
-                    position: fixed; 
+                    position: absolute; 
                     left: 0; 
                     top: 0; 
-                    width: 210mm; 
-                    height: 297mm; /* Force exact A4 height */
+                    width: 100%; 
+                    min-height: 100%;
                     margin: 0; 
-                    padding: 10mm; /* Compact padding */
+                    padding: 0;
                     background: white;
                     z-index: 9999;
-                    overflow: hidden; /* Clip overflow to prevent extra pages */
+                    display: flex;
+                    flex-direction: column;
                 }
                 .no-print { display: none !important; }
                 input[type="text"] { border: none; padding: 0; }
@@ -158,7 +159,7 @@ export const InsuranceReadyRxPrintLayout: React.FC<Props> = ({
         `}} />
 
         {/* Toolbar - Hidden on Print */}
-        <div className="w-full max-w-[210mm] mb-6 flex flex-col sm:flex-row justify-between items-center no-print gap-4">
+        <div className="w-full max-w-4xl mb-6 flex flex-col sm:flex-row justify-between items-center no-print gap-4">
             <h2 className="text-lg font-bold text-slate-800 flex items-center">
                 <FileText className="w-5 h-5 mr-2 text-indigo-600"/> Official Print Mode
             </h2>
@@ -184,7 +185,7 @@ export const InsuranceReadyRxPrintLayout: React.FC<Props> = ({
             </div>
         </div>
 
-        {/* Paper Container - A4 Portrait */}
+        {/* Paper Container - Responsive Width for Screen, Full Width for Print */}
         <div 
             id="insurance-rx-print-container"
             className="bg-white w-full max-w-[210mm] min-h-[297mm] p-8 shadow-2xl relative text-slate-900 box-border mx-auto flex flex-col"
@@ -268,7 +269,7 @@ export const InsuranceReadyRxPrintLayout: React.FC<Props> = ({
             </div>
 
             {/* Medicine Table */}
-            <div className="mb-4 flex-1 overflow-hidden">
+            <div className="mb-4 flex-1">
                 <div className="flex items-center mb-1">
                     <span className="text-2xl font-serif font-black italic mr-2 text-slate-900">Rx</span>
                 </div>
