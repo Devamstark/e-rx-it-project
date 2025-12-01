@@ -302,13 +302,6 @@ function App() {
       }
   };
 
-  const handleDeleteLabReferral = (id: string) => {
-      setLabReferrals(prev => prev.filter(l => l.id !== id));
-      if (currentUser) {
-          dbService.logSecurityAction(currentUser.id, 'LAB_REFERRAL_DELETED', `Deleted referral ID: ${id}`);
-      }
-  };
-
   // Appointment Handlers with Logging
   const handleAddAppointment = (apt: Appointment) => {
       setAppointments(prev => [...prev, apt]);
@@ -395,7 +388,6 @@ function App() {
                     onUpdatePatient={handleUpdatePatient}
                     labReferrals={labReferrals}
                     onAddLabReferral={handleAddLabReferral}
-                    onDeleteLabReferral={handleDeleteLabReferral}
                     appointments={appointments}
                     onUpdateAppointment={(apt) => setAppointments(prev => prev.map(a => a.id === apt.id ? apt : a))}
                     onAddAppointment={handleAddAppointment}

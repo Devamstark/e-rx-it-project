@@ -96,9 +96,6 @@ export const CreatePrescription: React.FC<CreatePrescriptionProps> = ({
   // Diagnosis Helpers State
   const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
   const [suggestingDiagnosis, setSuggestingDiagnosis] = useState(false);
-  
-  // Diagnosis Autocomplete
-  const [diagSearch, setDiagSearch] = useState('');
 
   // Filtered Autocomplete List - Filter out restricted drugs for safety by default
   const medicineOptions = useMemo(() => {
@@ -292,7 +289,6 @@ export const CreatePrescription: React.FC<CreatePrescriptionProps> = ({
       if (!current.includes(diag)) {
           setValue('diagnosis', current ? `${current}, ${diag}` : diag);
       }
-      setDiagSearch(''); // Clear search
   };
 
   // Voice Dictation Logic
@@ -784,39 +780,8 @@ export const CreatePrescription: React.FC<CreatePrescriptionProps> = ({
               )}
           </div>
 
-          {/* Diagnosis Section with Autocomplete */}
           <div className="relative">
               <label className="text-xs font-bold text-slate-500 mb-1 block">Diagnosis</label>
-              
-              {/* Autocomplete Input */}
-              <div className="mb-2 relative">
-                  <datalist id="diagnosis-list">
-                      {COMMON_DIAGNOSES.map(d => <option key={d} value={d} />)}
-                  </datalist>
-                  <div className="relative">
-                      <input 
-                        type="text" 
-                        list="diagnosis-list"
-                        placeholder="Search & Add Diagnosis..." 
-                        className="w-full border border-indigo-200 bg-indigo-50/30 rounded-md p-2 pl-8 text-sm focus:ring-2 focus:ring-indigo-500"
-                        value={diagSearch}
-                        onChange={(e) => setDiagSearch(e.target.value)}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                                e.preventDefault();
-                                handleQuickDiagnose(diagSearch);
-                            }
-                        }}
-                        onBlur={() => {
-                            if (diagSearch && COMMON_DIAGNOSES.includes(diagSearch)) {
-                                handleQuickDiagnose(diagSearch);
-                            }
-                        }}
-                      />
-                      <Search className="absolute left-2 top-2.5 w-4 h-4 text-indigo-400 pointer-events-none"/>
-                  </div>
-              </div>
-
               <textarea 
                 {...register('diagnosis', { required: true })} 
                 className="mt-1 block w-full border-slate-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border p-3 text-sm pr-10" 
@@ -826,7 +791,7 @@ export const CreatePrescription: React.FC<CreatePrescriptionProps> = ({
               <button
                 type="button"
                 onClick={() => toggleVoiceInput('DIAGNOSIS')}
-                className={`absolute top-[4.5rem] right-2 p-1.5 rounded-full transition-all ${isListening === 'DIAGNOSIS' ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+                className={`absolute top-8 right-2 p-1.5 rounded-full transition-all ${isListening === 'DIAGNOSIS' ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
                 title="Voice Dictation"
               >
                   <Mic className="w-4 h-4" />

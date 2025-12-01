@@ -22,7 +22,6 @@ interface DoctorDashboardProps {
   onUpdatePatient: (p: Patient) => void;
   labReferrals?: LabReferral[];
   onAddLabReferral?: (ref: LabReferral) => void;
-  onDeleteLabReferral?: (id: string) => void; // Added Prop
   appointments?: Appointment[];
   onUpdateAppointment?: (apt: Appointment) => void;
   onAddAppointment?: (apt: Appointment) => void;
@@ -45,7 +44,6 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
     onUpdatePatient,
     labReferrals = [],
     onAddLabReferral,
-    onDeleteLabReferral,
     appointments = [],
     onUpdateAppointment,
     onAddAppointment,
@@ -229,8 +227,8 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
       const p = myPatients.find(pat => pat.id === selectedLabPatient);
       if (!p) return;
 
-      // FIXED CODE: 0000 for easy access
-      const code = '0000';
+      // Generate random 4 digit code
+      const code = Math.floor(1000 + Math.random() * 9000).toString();
 
       const newRef: LabReferral = {
           id: `REF-${Date.now()}`,
@@ -252,12 +250,6 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
       setPreferredLab('');
       setLabNotes('');
       alert(`Lab Requisition Created. Access Code: ${code}`);
-  };
-
-  const handleDeleteReferral = (id: string) => {
-      if (confirm("Are you sure you want to delete this lab referral?")) {
-          if (onDeleteLabReferral) onDeleteLabReferral(id);
-      }
   };
 
   if (status !== VerificationStatus.VERIFIED) {
@@ -830,18 +822,9 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                                                      <td className="p-3 text-slate-600 truncate max-w-[120px]">{ref.testName}</td>
                                                      <td className="p-3 text-right">
                                                          {ref.status === 'COMPLETED' ? (
-                                                             <div className="flex items-center justify-end gap-2">
-                                                                 <button onClick={() => setViewingReport(ref)} className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded border border-green-200 font-bold hover:bg-green-200 inline-flex items-center">
-                                                                     <CheckCircle2 className="w-3 h-3 mr-1"/> View
-                                                                 </button>
-                                                                 <button 
-                                                                     onClick={() => handleDeleteReferral(ref.id)}
-                                                                     className="text-slate-400 hover:text-red-600 p-1.5 hover:bg-red-50 rounded transition-colors"
-                                                                     title="Delete Referral Record"
-                                                                 >
-                                                                     <Trash2 className="w-4 h-4"/>
-                                                                 </button>
-                                                             </div>
+                                                             <button onClick={() => setViewingReport(ref)} className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded border border-green-200 font-bold hover:bg-green-200 inline-flex items-center">
+                                                                 <CheckCircle2 className="w-3 h-3 mr-1"/> View
+                                                             </button>
                                                          ) : (
                                                              <div className="flex items-center justify-end gap-2">
                                                                  <button onClick={() => setPrintLabRequisition(ref)} className="text-xs bg-white text-slate-600 px-2 py-1 rounded border border-slate-200 font-bold hover:bg-slate-50 inline-flex items-center" title="Print Requisition Form">
@@ -850,13 +833,9 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                                                                  <button onClick={() => setShareLab(ref)} className="text-xs bg-indigo-50 text-indigo-700 px-2 py-1 rounded border border-indigo-200 font-bold hover:bg-indigo-100 inline-flex items-center">
                                                                      <Share2 className="w-3 h-3 mr-1"/> Share
                                                                  </button>
-                                                                 <button 
-                                                                     onClick={() => handleDeleteReferral(ref.id)}
-                                                                     className="text-slate-400 hover:text-red-600 p-1.5 hover:bg-red-50 rounded transition-colors"
-                                                                     title="Delete Referral"
-                                                                 >
-                                                                     <Trash2 className="w-4 h-4"/>
-                                                                 </button>
+                                                                 <span className="text-xs text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100">
+                                                                     Pending
+                                                                 </span>
                                                              </div>
                                                          )}
                                                      </td>
@@ -1020,7 +999,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                           <input 
                             readOnly 
                             className="bg-transparent text-xs w-full outline-none text-slate-600 font-mono"
-                            value={`https://erxdevx.vercel.app/?mode=lab_upload&ref_id=${shareLab.id}&code=${shareLab.accessCode || '0000'}`}
+                            value={`https://erxdevx.vercel.app/?mode=lab_upload&ref_id=${shareLab.id}`}
                           />
                           <button 
                             onClick={() => navigator.clipboard.writeText(`https://erxdevx.vercel.app/?mode=lab_upload&ref_id=${shareLab.id}&code=${shareLab.accessCode || '0000'}`)}
