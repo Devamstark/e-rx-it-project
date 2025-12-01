@@ -53,6 +53,14 @@ export const LabReportUpload: React.FC<Props> = ({ refId }) => {
                 reportUrl: url
             };
             await dbService.updateLabReferral(updatedRef);
+            
+            // SECURITY COMPLIANCE: Log the upload event to the central audit trail
+            await dbService.logSecurityAction(
+                'LAB_PORTAL_GUEST', 
+                'LAB_REPORT_UPLOADED', 
+                `External Upload: Report attached for Patient ${referral.patientName} (Ref: ${referral.id})`
+            );
+
             setSuccess(true);
         } catch (err: any) {
             alert("Upload Failed: " + err.message);

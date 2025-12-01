@@ -204,6 +204,36 @@ function App() {
     return true;
   };
 
+  // NEW: Handle adding marketing leads to directory
+  const handleAddDirectoryEntry = (entry: Partial<User>) => {
+      const timestamp = Date.now();
+      // Generate a temporary email if not provided for key constraint
+      const tempEmail = entry.email || `lead-${timestamp}@directory.temp`;
+      
+      const newLead: User = {
+          id: `ph-lead-${timestamp}`,
+          name: entry.name || 'Unknown Pharmacy',
+          email: tempEmail,
+          password: 'temp-lead-password', // Placeholder, they can't login yet
+          role: UserRole.PHARMACY,
+          verificationStatus: VerificationStatus.DIRECTORY,
+          registrationDate: new Date().toISOString(),
+          // Map marketing fields
+          clinicName: entry.name,
+          clinicAddress: entry.clinicAddress,
+          city: entry.city,
+          pincode: entry.pincode,
+          phone: entry.phone,
+          state: entry.state,
+          licenseNumber: 'PENDING-LEAD'
+      };
+
+      setRegisteredUsers(prev => [...prev, newLead]);
+      if (currentUser) {
+          dbService.logSecurityAction(currentUser.id, 'DIRECTORY_LEAD_ADDED', `Added marketing lead: ${newLead.name}`);
+      }
+  };
+
   const handleUpdateUserStatus = (userId: string, newStatus: VerificationStatus) => {
     setRegisteredUsers(prev => 
       prev.map(u => u.id === userId ? { ...u, verificationStatus: newStatus } : u)
@@ -297,7 +327,7 @@ function App() {
   const handleAddLabReferral = (referral: LabReferral) => {
       setLabReferrals(prev => [referral, ...prev]);
       if (currentUser) {
-        dbService.logSecurityAction(currentUser.id, 'LAB_REFERRAL', `Referral created for ${referral.patientName} (${referral.testName})`);
+        dbService.logSecurityAction(currentUser.id, 'LAB_REQ_INITIATED', `Referral created for ${referral.patientName} (${referral.testName})`);
       }
   };
 
@@ -428,6 +458,7 @@ function App() {
                 onResetPassword={handleResetPassword}
                 onEditUser={handleUpdateUser}
                 auditLogs={auditLogs}
+                onAddDirectoryEntry={handleAddDirectoryEntry}
                 />
             )}
             </div>

@@ -1,7 +1,9 @@
-import React, { useState, useMemo } from 'react';
-import { ShieldAlert, Plus, CheckCircle2, AlertTriangle, Trash2, FileText, Activity, RefreshCw, Ban, File, X, Stethoscope, Building2, Eye, Mail, Phone as PhoneIcon, MapPin, Calendar, Edit2, Save as SaveIcon, Lock, Search, Database } from 'lucide-react';
+
+import React, { useState, useMemo, useEffect } from 'react';
+import { ShieldAlert, Plus, CheckCircle2, AlertTriangle, Trash2, FileText, Activity, RefreshCw, Ban, File, X, Stethoscope, Building2, Eye, Mail, Phone as PhoneIcon, MapPin, Calendar, Edit2, Save as SaveIcon, Lock, Search, Database, ChevronLeft, ChevronRight, Store } from 'lucide-react';
 import { AdminRole, AdminPermission, AdminUser, User, UserRole, VerificationStatus, Prescription, UserDocument, AuditLog } from '../../types';
 import { dbService } from '../../services/db';
+import { INDIAN_STATES, PINCODE_REGEX, PHONE_REGEX } from '../../constants';
 
 interface AdminDashboardProps {
     users: User[];
@@ -12,6 +14,7 @@ interface AdminDashboardProps {
     onResetPassword: (userId: string) => void;
     onEditUser: (user: User) => void;
     auditLogs?: AuditLog[];
+    onAddDirectoryEntry?: (entry: Partial<User>) => void; // New prop for Directory
 }
 
 // --- Mock Data for Internal Admin Management ---
@@ -98,6 +101,7 @@ const UserProfileModal = ({ user, onClose, onSave }: { user: User; onClose: () =
                     <span className={`text-xs px-2 py-1 rounded-full font-bold ml-2 ${
                         user.verificationStatus === 'VERIFIED' ? 'bg-green-100 text-green-700' :
                         user.verificationStatus === 'PENDING' ? 'bg-blue-100 text-blue-700' :
+                        user.verificationStatus === 'DIRECTORY' ? 'bg-amber-100 text-amber-700' :
                         'bg-red-100 text-red-700'
                     }`}>
                         {user.verificationStatus}
@@ -332,7 +336,10 @@ const UserProfileModal = ({ user, onClose, onSave }: { user: User; onClose: () =
 }
 
 const SecurityLogView = ({ logs, users }: { logs: AuditLog[], users: User[] }) => {
-    const [activeTab, setActiveTab] = useState<'ALL' | 'DOCTOR' | 'PHARMACY' | 'ADMIN'>('ALL');
+    const [activeTab, setActiveTab] = useState<'ALL' | 'DOCTOR' | 'PHARMACY' | 'ADMIN' | 'LAB'>('ALL');
+    const [searchTerm, setSearchTerm] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 50;
 
     // Create a robust user map to look up names/roles from actorId
     const userMap = useMemo(() => {
@@ -343,6 +350,10 @@ const SecurityLogView = ({ logs, users }: { logs: AuditLog[], users: User[] }) =
         });
         // Add known system/admin accounts
         map.set('adm-root', { name: 'System Admin', role: 'SUPER_ADMIN' });
+        
+        // Add External Actors
+        map.set('LAB_PORTAL_GUEST', { name: 'External Lab Portal', role: 'PUBLIC_LAB' });
+        
         return map;
     }, [users]);
 
@@ -350,59 +361,101 @@ const SecurityLogView = ({ logs, users }: { logs: AuditLog[], users: User[] }) =
         return userMap.get(actorId) || { name: actorId, role: 'UNKNOWN' };
     };
 
-    // Filter logs based on active tab and derived role
-    const filteredLogs = logs.filter(log => {
-        const userInfo = getUserInfo(log.actorId);
-        
-        if (activeTab === 'ALL') return true;
-        
-        if (activeTab === 'DOCTOR') {
-            return userInfo.role === 'DOCTOR';
-        }
-        if (activeTab === 'PHARMACY') {
-            return userInfo.role === 'PHARMACY';
-        }
-        if (activeTab === 'ADMIN') {
-            return userInfo.role === 'ADMIN' || userInfo.role === 'SUPER_ADMIN' || userInfo.role.includes('ADMIN');
-        }
-        
-        return false;
-    });
+    // Filter logs based on active tab and search term
+    const filteredLogs = useMemo(() => {
+        return logs.filter(log => {
+            const info = getUserInfo(log.actorId);
+            
+            // 1. Tab Filter
+            let tabMatch = false;
+            if (activeTab === 'ALL') tabMatch = true;
+            else if (activeTab === 'DOCTOR') tabMatch = info.role === 'DOCTOR';
+            else if (activeTab === 'PHARMACY') tabMatch = info.role === 'PHARMACY';
+            else if (activeTab === 'ADMIN') tabMatch = info.role?.includes('ADMIN');
+            else if (activeTab === 'LAB') tabMatch = info.role === 'PUBLIC_LAB' || log.action.includes('LAB');
+
+            if (!tabMatch) return false;
+
+            // 2. Search Filter
+            if (!searchTerm) return true;
+            const searchLower = searchTerm.toLowerCase();
+            return (
+                info.name.toLowerCase().includes(searchLower) ||
+                log.action.toLowerCase().includes(searchLower) ||
+                log.details.toLowerCase().includes(searchLower) ||
+                info.role.toLowerCase().includes(searchLower)
+            );
+        });
+    }, [logs, activeTab, searchTerm, userMap]);
+
+    // Pagination Logic
+    const totalPages = Math.ceil(filteredLogs.length / ITEMS_PER_PAGE);
+    const displayedLogs = filteredLogs.slice(
+        (currentPage - 1) * ITEMS_PER_PAGE,
+        currentPage * ITEMS_PER_PAGE
+    );
+
+    // Reset pagination when filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [activeTab, searchTerm]);
+
+    const getPaginationGroup = () => {
+        const start = Math.floor((currentPage - 1) / 5) * 5;
+        return new Array(Math.min(5, totalPages - start)).fill(0).map((_, idx) => start + idx + 1);
+    };
 
     return (
         <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
-                <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-bold text-slate-800 flex items-center">
-                        <Lock className="w-4 h-4 mr-2 text-indigo-600"/> Security Log
-                    </h3>
-                    <span className="text-xs text-slate-500">Forensic Audit Trail</span>
-                </div>
-                
-                {/* Role-Based Filters */}
-                <div className="flex space-x-2">
-                    {[
-                        { id: 'ALL', label: 'All Events' },
-                        { id: 'DOCTOR', label: 'Doctor Logs' },
-                        { id: 'PHARMACY', label: 'Pharmacy Logs' },
-                        { id: 'ADMIN', label: 'Admin Logs' }
-                    ].map((tab) => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id as any)}
-                            className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${
-                                activeTab === tab.id 
-                                ? 'bg-indigo-600 text-white shadow-sm' 
-                                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-                            }`}
-                        >
-                            {tab.label}
-                        </button>
-                    ))}
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                        <h3 className="font-bold text-slate-800 flex items-center">
+                            <Lock className="w-4 h-4 mr-2 text-indigo-600"/> Security Log
+                        </h3>
+                        <span className="text-xs text-slate-500">Forensic Audit Trail • {filteredLogs.length} Events</span>
+                    </div>
+                    
+                    <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                        {/* Search Input */}
+                        <div className="relative">
+                            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/>
+                            <input 
+                                type="text" 
+                                placeholder="Search User, Action..." 
+                                className="pl-9 pr-4 py-1.5 text-xs border border-slate-300 rounded-md w-full sm:w-48 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+
+                        {/* Role-Based Filters */}
+                        <div className="flex bg-white rounded-md border border-slate-200 p-1">
+                            {[
+                                { id: 'ALL', label: 'All' },
+                                { id: 'DOCTOR', label: 'Dr' },
+                                { id: 'PHARMACY', label: 'Pharma' },
+                                { id: 'ADMIN', label: 'Admin' },
+                                { id: 'LAB', label: 'Lab' }
+                            ].map((tab) => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id as any)}
+                                    className={`px-3 py-1 text-[10px] font-bold rounded transition-colors ${
+                                        activeTab === tab.id 
+                                        ? 'bg-indigo-100 text-indigo-700' 
+                                        : 'text-slate-500 hover:bg-slate-50'
+                                    }`}
+                                >
+                                    {tab.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto min-h-[400px]">
                 <table className="min-w-full divide-y divide-slate-200">
                     <thead className="bg-slate-50">
                         <tr>
@@ -414,12 +467,12 @@ const SecurityLogView = ({ logs, users }: { logs: AuditLog[], users: User[] }) =
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-slate-200">
-                        {filteredLogs.length === 0 ? (
+                        {displayedLogs.length === 0 ? (
                             <tr>
                                 <td colSpan={5} className="px-6 py-8 text-center text-slate-500 text-sm">No matching security logs found.</td>
                             </tr>
                         ) : (
-                            filteredLogs.map((log) => {
+                            displayedLogs.map((log) => {
                                 const info = getUserInfo(log.actorId);
                                 return (
                                     <tr key={log.id} className="hover:bg-slate-50">
@@ -436,11 +489,13 @@ const SecurityLogView = ({ logs, users }: { logs: AuditLog[], users: User[] }) =
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <span className={`px-2 inline-flex text-[10px] leading-5 font-bold rounded-full uppercase 
                                                 ${log.action.includes('LOGIN') ? 'bg-green-100 text-green-800' : 
-                                                  log.action.includes('LOGOUT') ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-800'}`}>
+                                                  log.action.includes('LOGOUT') ? 'bg-amber-100 text-amber-800' : 
+                                                  log.action.includes('LAB') ? 'bg-teal-100 text-teal-800' :
+                                                  'bg-slate-100 text-slate-800'}`}>
                                                 {log.action.replace(/_/g, ' ')}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-slate-600">
+                                        <td className="px-6 py-4 text-sm text-slate-600 break-words max-w-xs">
                                             {log.details}
                                         </td>
                                     </tr>
@@ -450,6 +505,42 @@ const SecurityLogView = ({ logs, users }: { logs: AuditLog[], users: User[] }) =
                     </tbody>
                 </table>
             </div>
+
+            {/* Pagination Footer */}
+            {totalPages > 1 && (
+                <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+                    <span className="text-xs text-slate-500">
+                        Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to {Math.min(currentPage * ITEMS_PER_PAGE, filteredLogs.length)} of {filteredLogs.length} entries
+                    </span>
+                    <div className="flex gap-1">
+                        <button
+                            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                            disabled={currentPage === 1}
+                            className="p-1 rounded border border-slate-300 hover:bg-white disabled:opacity-50 disabled:hover:bg-transparent"
+                        >
+                            <ChevronLeft className="w-4 h-4 text-slate-600"/>
+                        </button>
+                        
+                        {getPaginationGroup().map((item) => (
+                            <button
+                                key={item}
+                                onClick={() => setCurrentPage(item)}
+                                className={`px-3 py-1 text-xs font-bold rounded border ${currentPage === item ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white border-slate-300 text-slate-600 hover:bg-slate-50'}`}
+                            >
+                                {item}
+                            </button>
+                        ))}
+
+                        <button
+                            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                            disabled={currentPage === totalPages}
+                            className="p-1 rounded border border-slate-300 hover:bg-white disabled:opacity-50 disabled:hover:bg-transparent"
+                        >
+                            <ChevronRight className="w-4 h-4 text-slate-600"/>
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -545,13 +636,131 @@ const AnalyticsView = ({ users, prescriptions }: { users: User[], prescriptions:
 };
 
 const PrescriptionLog = ({ prescriptions }: { prescriptions: Prescription[] }) => {
+    const [activeFilter, setActiveFilter] = useState<'ALL' | 'DOCTOR' | 'PHARMACY' | 'PATIENT'>('ALL');
+    const [searchTerm, setSearchTerm] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 50;
+
+    // Filter Logic
+    const filteredRx = useMemo(() => {
+        let list = prescriptions;
+        const lowerTerm = searchTerm.toLowerCase();
+
+        // If no search term, return all (activeFilter only scopes the search)
+        if (!lowerTerm) return list;
+
+        return list.filter(rx => {
+            // Field checks based on active filter scope
+            let match = false;
+
+            if (activeFilter === 'ALL') {
+                // ALL: Check everything
+                const basicMatch = 
+                    rx.id.toLowerCase().includes(lowerTerm) ||
+                    rx.doctorName.toLowerCase().includes(lowerTerm) ||
+                    rx.patientName.toLowerCase().includes(lowerTerm) ||
+                    (rx.pharmacyName || '').toLowerCase().includes(lowerTerm);
+
+                const doctorMatch = rx.doctorDetails ? (
+                    (rx.doctorDetails.phone || '').includes(lowerTerm) ||
+                    (rx.doctorDetails.email || '').toLowerCase().includes(lowerTerm) ||
+                    (rx.doctorDetails.pincode || '').includes(lowerTerm) ||
+                    (rx.doctorDetails.clinicAddress || '').toLowerCase().includes(lowerTerm)
+                ) : false;
+
+                const patientMatch = (rx.patientPhone || '').includes(lowerTerm);
+                match = basicMatch || doctorMatch || patientMatch;
+
+            } else if (activeFilter === 'DOCTOR') {
+                // DOCTOR: Only check doctor related fields
+                match = rx.doctorName.toLowerCase().includes(lowerTerm);
+                if (rx.doctorDetails) {
+                    match = match || 
+                        (rx.doctorDetails.phone || '').includes(lowerTerm) ||
+                        (rx.doctorDetails.email || '').toLowerCase().includes(lowerTerm) ||
+                        (rx.doctorDetails.pincode || '').includes(lowerTerm) ||
+                        (rx.doctorDetails.clinicAddress || '').toLowerCase().includes(lowerTerm);
+                }
+
+            } else if (activeFilter === 'PHARMACY') {
+                // PHARMACY: Only check pharmacy name (ID usually not searched by users here)
+                match = (rx.pharmacyName || '').toLowerCase().includes(lowerTerm);
+
+            } else if (activeFilter === 'PATIENT') {
+                // PATIENT: Check Name and Phone
+                match = rx.patientName.toLowerCase().includes(lowerTerm) || (rx.patientPhone || '').includes(lowerTerm);
+            }
+
+            return match;
+        });
+    }, [prescriptions, searchTerm, activeFilter]);
+
+    // Pagination Logic
+    const totalPages = Math.ceil(filteredRx.length / ITEMS_PER_PAGE);
+    const displayedRx = filteredRx.slice(
+        (currentPage - 1) * ITEMS_PER_PAGE,
+        currentPage * ITEMS_PER_PAGE
+    );
+
+    // Reset page on search/filter change
+    useEffect(() => { setCurrentPage(1); }, [searchTerm, activeFilter]);
+
+    const getPaginationGroup = () => {
+        const start = Math.floor((currentPage - 1) / 5) * 5;
+        return new Array(Math.min(5, totalPages - start)).fill(0).map((_, idx) => start + idx + 1);
+    };
+
     return (
         <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
-                <h3 className="font-bold text-slate-800">Central Prescription Log</h3>
-                <span className="text-xs text-slate-500">Audit Trail</span>
+            <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex flex-col md:flex-row justify-between items-center gap-4">
+                <div>
+                    <h3 className="font-bold text-slate-800">Central Prescription Log</h3>
+                    <span className="text-xs text-slate-500">Audit Trail • {filteredRx.length} Records</span>
+                </div>
+                
+                <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                    {/* Search Bar */}
+                    <div className="relative w-full md:w-auto">
+                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/>
+                        <input 
+                            type="text" 
+                            placeholder={
+                                activeFilter === 'DOCTOR' ? "Search Doctor Name, Phone, Reg..." :
+                                activeFilter === 'PHARMACY' ? "Search Pharmacy Name..." :
+                                activeFilter === 'PATIENT' ? "Search Patient Name, Phone..." :
+                                "Search All Fields..."
+                            }
+                            className="pl-9 pr-4 py-2 text-sm border border-slate-300 rounded-md w-full md:w-72 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+
+                    {/* Filter Tabs */}
+                    <div className="flex bg-white rounded-md border border-slate-200 p-1">
+                        {[
+                            { id: 'ALL', label: 'All' },
+                            { id: 'DOCTOR', label: 'Doctor' },
+                            { id: 'PHARMACY', label: 'Pharmacy' },
+                            { id: 'PATIENT', label: 'Patient' },
+                        ].map((tab) => (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveFilter(tab.id as any)}
+                                className={`px-3 py-1 text-[10px] font-bold rounded transition-colors ${
+                                    activeFilter === tab.id 
+                                    ? 'bg-indigo-100 text-indigo-700' 
+                                    : 'text-slate-500 hover:bg-slate-50'
+                                }`}
+                            >
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
             </div>
-            <div className="overflow-x-auto">
+
+            <div className="overflow-x-auto min-h-[400px]">
                 <table className="min-w-full divide-y divide-slate-200">
                     <thead className="bg-slate-50">
                         <tr>
@@ -564,12 +773,12 @@ const PrescriptionLog = ({ prescriptions }: { prescriptions: Prescription[] }) =
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-slate-200">
-                        {prescriptions.length === 0 ? (
+                        {displayedRx.length === 0 ? (
                             <tr>
-                                <td colSpan={6} className="px-6 py-8 text-center text-slate-500 text-sm">No prescriptions recorded yet.</td>
+                                <td colSpan={6} className="px-6 py-8 text-center text-slate-500 text-sm">No prescriptions matching search criteria.</td>
                             </tr>
                         ) : (
-                            prescriptions.map((rx) => (
+                            displayedRx.map((rx) => (
                                 <tr key={rx.id} className="hover:bg-slate-50">
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
                                         {new Date(rx.date).toLocaleDateString()}
@@ -579,9 +788,11 @@ const PrescriptionLog = ({ prescriptions }: { prescriptions: Prescription[] }) =
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
                                         {rx.doctorName}
+                                        {rx.doctorDetails?.pincode && <div className="text-[10px] text-slate-400 font-normal">{rx.doctorDetails.city}, {rx.doctorDetails.pincode}</div>}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
                                         {rx.patientName}
+                                        {rx.patientPhone && <div className="text-[10px] text-slate-400">{rx.patientPhone}</div>}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
                                         {rx.pharmacyName || 'Unassigned'}
@@ -599,6 +810,42 @@ const PrescriptionLog = ({ prescriptions }: { prescriptions: Prescription[] }) =
                     </tbody>
                 </table>
             </div>
+
+            {/* Pagination Footer */}
+            {totalPages > 1 && (
+                <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+                    <span className="text-xs text-slate-500">
+                        Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to {Math.min(currentPage * ITEMS_PER_PAGE, filteredRx.length)} of {filteredRx.length} entries
+                    </span>
+                    <div className="flex gap-1">
+                        <button
+                            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                            disabled={currentPage === 1}
+                            className="p-1 rounded border border-slate-300 hover:bg-white disabled:opacity-50 disabled:hover:bg-transparent"
+                        >
+                            <ChevronLeft className="w-4 h-4 text-slate-600"/>
+                        </button>
+                        
+                        {getPaginationGroup().map((item) => (
+                            <button
+                                key={item}
+                                onClick={() => setCurrentPage(item)}
+                                className={`px-3 py-1 text-xs font-bold rounded border ${currentPage === item ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white border-slate-300 text-slate-600 hover:bg-slate-50'}`}
+                            >
+                                {item}
+                            </button>
+                        ))}
+
+                        <button
+                            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                            disabled={currentPage === totalPages}
+                            className="p-1 rounded border border-slate-300 hover:bg-white disabled:opacity-50 disabled:hover:bg-transparent"
+                        >
+                            <ChevronRight className="w-4 h-4 text-slate-600"/>
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -610,7 +857,8 @@ const UserRegistry = ({
     onDelete,
     onReset,
     onViewDocs,
-    onViewProfile
+    onViewProfile,
+    onAdd // Optional prop for adding directory leads
 }: { 
     users: User[], 
     onAction: (id: string, status: VerificationStatus) => void,
@@ -618,10 +866,15 @@ const UserRegistry = ({
     onDelete: (id: string) => void,
     onReset: (id: string) => void,
     onViewDocs: (docs: UserDocument[]) => void,
-    onViewProfile: (user: User) => void
+    onViewProfile: (user: User) => void,
+    onAdd?: (entry: Partial<User>) => void
 }) => {
     const [terminateModalUser, setTerminateModalUser] = useState<string | null>(null);
     const [terminationReason, setTerminationReason] = useState("");
+    
+    // Add Directory Lead State
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [newLead, setNewLead] = useState<Partial<User>>({ state: '' });
 
     const confirmTermination = () => {
         if(terminateModalUser && terminationReason) {
@@ -637,19 +890,43 @@ const UserRegistry = ({
         }
     };
 
+    const handleSaveLead = () => {
+        if (onAdd && newLead.name && newLead.phone && newLead.pincode) {
+            onAdd(newLead);
+            setShowAddModal(false);
+            setNewLead({ state: '' });
+        } else {
+            alert("Name, Phone, and Pincode are required.");
+        }
+    };
+
     const filtered = users.filter(u => u.role !== UserRole.ADMIN);
 
     return (
         <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
-                <h3 className="font-bold text-slate-800">Master User Registry</h3>
-                <span className="text-xs text-slate-500">All registered entities</span>
+                <div>
+                    <h3 className="font-bold text-slate-800">
+                        {onAdd ? "Unverified Pharmacy Directory" : "Master User Registry"}
+                    </h3>
+                    <span className="text-xs text-slate-500">
+                        {onAdd ? "Marketing leads & pending listings" : "All verified & registered entities"}
+                    </span>
+                </div>
+                {onAdd && (
+                    <button 
+                        onClick={() => setShowAddModal(true)}
+                        className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-indigo-700 flex items-center shadow-sm"
+                    >
+                        <Plus className="w-4 h-4 mr-2"/> Add New Lead
+                    </button>
+                )}
             </div>
             <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-slate-200">
                     <thead className="bg-slate-50">
                         <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">User</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">User / Establishment</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Role</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Status</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Docs</th>
@@ -667,6 +944,7 @@ const UserRegistry = ({
                                         {u.name}
                                     </div>
                                     <div className="text-xs text-slate-500">ID: {u.id}</div>
+                                    {u.phone && <div className="text-xs text-slate-400 mt-0.5 flex items-center"><PhoneIcon className="w-3 h-3 mr-1"/> {u.phone}</div>}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                     <span className="text-sm text-slate-700">{u.role}</span>
@@ -675,6 +953,7 @@ const UserRegistry = ({
                                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
                                         ${u.verificationStatus === VerificationStatus.VERIFIED ? 'bg-green-100 text-green-800' : 
                                           u.verificationStatus === VerificationStatus.PENDING ? 'bg-blue-100 text-blue-800' : 
+                                          u.verificationStatus === VerificationStatus.DIRECTORY ? 'bg-amber-100 text-amber-700' :
                                           u.verificationStatus === VerificationStatus.TERMINATED ? 'bg-red-100 text-red-800' : 'bg-slate-100 text-slate-800'}`}>
                                         {u.verificationStatus}
                                     </span>
@@ -694,7 +973,7 @@ const UserRegistry = ({
                                     )}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                                    {u.verificationStatus === VerificationStatus.VERIFIED && (
+                                    {(u.verificationStatus === VerificationStatus.VERIFIED || u.verificationStatus === VerificationStatus.DIRECTORY) && (
                                         <>
                                             <button 
                                                 onClick={() => onReset(u.id)}
@@ -725,6 +1004,57 @@ const UserRegistry = ({
                     </tbody>
                 </table>
             </div>
+
+            {/* Add Lead Modal */}
+            {showAddModal && (
+                <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm animate-in zoom-in-95">
+                    <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-bold text-slate-800 flex items-center">
+                                <Store className="w-5 h-5 mr-2 text-indigo-600"/> Add Pharmacy Lead
+                            </h3>
+                            <button onClick={() => setShowAddModal(false)}><X className="w-5 h-5 text-slate-400"/></button>
+                        </div>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Pharmacy Name *</label>
+                                <input className="w-full border p-2 rounded text-sm" value={newLead.name || ''} onChange={e => setNewLead({...newLead, name: e.target.value})} placeholder="e.g. City Meds" autoFocus/>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Phone Number *</label>
+                                <input className="w-full border p-2 rounded text-sm" value={newLead.phone || ''} onChange={e => setNewLead({...newLead, phone: e.target.value})} placeholder="10-digit Mobile"/>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">City</label>
+                                    <input className="w-full border p-2 rounded text-sm" value={newLead.city || ''} onChange={e => setNewLead({...newLead, city: e.target.value})} placeholder="City"/>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Pincode *</label>
+                                    <input className="w-full border p-2 rounded text-sm" value={newLead.pincode || ''} onChange={e => setNewLead({...newLead, pincode: e.target.value})} placeholder="6-digits" maxLength={6}/>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Full Address</label>
+                                <textarea className="w-full border p-2 rounded text-sm" rows={2} value={newLead.clinicAddress || ''} onChange={e => setNewLead({...newLead, clinicAddress: e.target.value})} placeholder="Shop No, Street, Landmark..."/>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">State</label>
+                                <select className="w-full border p-2 rounded text-sm bg-white" value={newLead.state || ''} onChange={e => setNewLead({...newLead, state: e.target.value})}>
+                                    <option value="">Select State</option>
+                                    {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                                </select>
+                            </div>
+                            <button 
+                                onClick={handleSaveLead}
+                                className="w-full bg-indigo-600 text-white py-2 rounded font-bold hover:bg-indigo-700 shadow-sm mt-2"
+                            >
+                                Save Lead to Directory
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Termination Modal */}
             {terminateModalUser && (
@@ -1021,9 +1351,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     onDeleteUser,
     onResetPassword,
     onEditUser,
-    auditLogs = []
+    auditLogs = [],
+    onAddDirectoryEntry
 }) => {
-    const [activeView, setActiveView] = useState<'OVERVIEW' | 'REGISTRY' | 'ROLES' | 'ANALYTICS' | 'RX_LOGS' | 'SECURITY_LOG'>('OVERVIEW');
+    const [activeView, setActiveView] = useState<'OVERVIEW' | 'REGISTRY' | 'DIRECTORY' | 'ROLES' | 'ANALYTICS' | 'RX_LOGS' | 'SECURITY_LOG'>('OVERVIEW');
     const [filterStatus, setFilterStatus] = useState<VerificationStatus | 'ALL'>('ALL');
     const [viewDocs, setViewDocs] = useState<UserDocument[] | null>(null);
     const [profileUser, setProfileUser] = useState<User | null>(null);
@@ -1056,6 +1387,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         </button>
                         <button onClick={() => setActiveView('REGISTRY')} className={`w-full text-left px-3 py-2 rounded text-sm font-medium ${activeView === 'REGISTRY' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50'}`}>
                             Master Registry
+                        </button>
+                        <button onClick={() => setActiveView('DIRECTORY')} className={`w-full text-left px-3 py-2 rounded text-sm font-medium ${activeView === 'DIRECTORY' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50'}`}>
+                            Directory (Unverified)
                         </button>
                         <button onClick={() => setActiveView('ROLES')} className={`w-full text-left px-3 py-2 rounded text-sm font-medium ${activeView === 'ROLES' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50'}`}>
                             Access Control (RBAC)
@@ -1107,13 +1441,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <div className="animate-in fade-in duration-300">
                         <h2 className="text-2xl font-bold text-slate-900 mb-6">User Registry & Compliance</h2>
                         <UserRegistry 
-                            users={displayedUsers} 
+                            users={displayedUsers.filter(u => u.verificationStatus !== VerificationStatus.DIRECTORY)} 
                             onAction={onUpdateStatus} 
                             onTerminate={onTerminateUser}
                             onDelete={onDeleteUser}
                             onReset={onResetPassword}
                             onViewDocs={setViewDocs}
                             onViewProfile={setProfileUser}
+                        />
+                    </div>
+                )}
+
+                {activeView === 'DIRECTORY' && (
+                    <div className="animate-in fade-in duration-300">
+                        <h2 className="text-2xl font-bold text-slate-900 mb-6">Unverified Pharmacy Directory</h2>
+                        <UserRegistry 
+                            users={users.filter(u => u.verificationStatus === VerificationStatus.DIRECTORY)} 
+                            onAction={onUpdateStatus} 
+                            onTerminate={onTerminateUser}
+                            onDelete={onDeleteUser}
+                            onReset={onResetPassword}
+                            onViewDocs={setViewDocs}
+                            onViewProfile={setProfileUser}
+                            onAdd={onAddDirectoryEntry} // Pass handler for adding leads
                         />
                     </div>
                 )}
@@ -1137,7 +1487,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                     <div key={idx} className="bg-white p-4 rounded shadow border border-slate-200">
                                         <div className="flex justify-between items-center mb-2">
                                             <span className="text-xs font-bold uppercase text-indigo-600 bg-indigo-50 px-2 py-1 rounded">{doc.type.replace('_', ' ')}</span>
-                                            <span className="text-xs text-slate-400">{new Date(doc.uploadedAt).toLocaleDateString()}</span>
+                                            <span className="text-xs text-slate-400">{new Date(doc.uploadedAt).toLocaleDateString()}</p>
                                         </div>
                                         <div className="aspect-[4/3] bg-slate-100 rounded overflow-hidden border border-slate-200 flex items-center justify-center group relative">
                                             {doc.name.toLowerCase().endsWith('.pdf') ? (
