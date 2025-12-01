@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { ShieldAlert, Plus, CheckCircle2, AlertTriangle, Trash2, FileText, Activity, RefreshCw, Ban, File, X, Stethoscope, Building2, Eye, Mail, Phone as PhoneIcon, MapPin, Calendar, Edit2, Save as SaveIcon, Lock, Search, Database, ChevronLeft, ChevronRight, Store } from 'lucide-react';
 import { AdminRole, AdminPermission, AdminUser, User, UserRole, VerificationStatus, Prescription, UserDocument, AuditLog } from '../../types';
@@ -1487,7 +1488,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                     <div key={idx} className="bg-white p-4 rounded shadow border border-slate-200">
                                         <div className="flex justify-between items-center mb-2">
                                             <span className="text-xs font-bold uppercase text-indigo-600 bg-indigo-50 px-2 py-1 rounded">{doc.type.replace('_', ' ')}</span>
-                                            <span className="text-xs text-slate-400">{new Date(doc.uploadedAt).toLocaleDateString()}</p>
+                                            <span className="text-xs text-slate-400">{new Date(doc.uploadedAt).toLocaleDateString()}</span>
                                         </div>
                                         <div className="aspect-[4/3] bg-slate-100 rounded overflow-hidden border border-slate-200 flex items-center justify-center group relative">
                                             {doc.name.toLowerCase().endsWith('.pdf') ? (
