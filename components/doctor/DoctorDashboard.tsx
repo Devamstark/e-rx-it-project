@@ -512,12 +512,25 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                                                      <td className="p-3 text-right align-top">
                                                          <div className="flex gap-2 justify-end">
                                                              {ref.status === 'COMPLETED' ? (
-                                                                 <button 
-                                                                    onClick={() => setViewingReport(ref)}
-                                                                    className="text-xs bg-indigo-50 text-indigo-700 px-2 py-1 rounded border border-indigo-100 font-bold hover:bg-indigo-100 inline-flex items-center"
-                                                                 >
-                                                                     <FileText className="w-3 h-3 mr-1"/> View
-                                                                 </button>
+                                                                 <>
+                                                                    <button 
+                                                                        onClick={() => setViewingReport(ref)}
+                                                                        className="text-xs bg-indigo-50 text-indigo-700 px-2 py-1 rounded border border-indigo-100 font-bold hover:bg-indigo-100 inline-flex items-center"
+                                                                    >
+                                                                        <FileText className="w-3 h-3 mr-1"/> View
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            if(confirm("Are you sure you want to delete this received report? This cannot be undone.")) {
+                                                                                if(onDeleteLabReferral) onDeleteLabReferral(ref.id);
+                                                                            }
+                                                                        }}
+                                                                        className="text-xs bg-red-50 text-red-700 px-2 py-1 rounded border border-red-200 font-bold hover:bg-red-100 inline-flex items-center"
+                                                                        title="Delete Report"
+                                                                    >
+                                                                        <Trash2 className="w-3 h-3"/>
+                                                                    </button>
+                                                                 </>
                                                              ) : (
                                                                  <>
                                                                      <button 
