@@ -55,6 +55,7 @@ export interface DbConfig {
 
 export interface InventoryItem {
   id: string;
+  pharmacyId?: string; // Added for relational mapping
   name: string;
   genericName?: string; 
   manufacturer: string;
@@ -138,7 +139,7 @@ export interface User {
   stateCouncil?: string;
   specialty?: string;
 
-  inventory?: InventoryItem[];
+  inventory?: InventoryItem[]; // Deprecated in favor of relational table, kept for legacy support
   doctorDirectory?: DoctorDirectoryEntry[];
 
   terminatedAt?: string | null;
@@ -270,6 +271,7 @@ export interface LabReferral {
   status: 'PENDING' | 'COMPLETED';
   reportUrl?: string; 
   notes?: string;
+  accessCode?: string;
 }
 
 // --- NEW: Appointments & Certificates ---
@@ -319,6 +321,7 @@ export interface AuditLog {
 
 export interface Supplier {
   id: string;
+  pharmacyId?: string; // Added for RLS
   name: string;
   contact: string;
   email?: string;
@@ -329,6 +332,7 @@ export interface Supplier {
 
 export interface Customer {
   id: string;
+  pharmacyId?: string; // Added for RLS
   name: string;
   phone: string;
   email?: string;
@@ -351,6 +355,7 @@ export interface SaleItem {
 
 export interface Sale {
   id: string;
+  pharmacyId: string; // Already exists
   invoiceNumber: string;
   date: string; 
   customerId?: string;
@@ -363,11 +368,11 @@ export interface Sale {
   amountPaid?: number; 
   balanceDue?: number; 
   paymentMode: 'CASH' | 'UPI' | 'CARD' | 'CREDIT' | 'PARTIAL';
-  pharmacyId: string;
 }
 
 export interface SalesReturn {
     id: string;
+    pharmacyId?: string; // Added for RLS
     originalInvoiceId: string;
     invoiceNumber: string; 
     date: string;

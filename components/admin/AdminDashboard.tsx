@@ -1,5 +1,4 @@
 
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { ShieldAlert, Plus, CheckCircle2, AlertTriangle, Trash2, FileText, Activity, RefreshCw, Ban, File, X, Stethoscope, Building2, Eye, Mail, Phone as PhoneIcon, MapPin, Calendar, Edit2, Save as SaveIcon, Lock, Search, Database, ChevronLeft, ChevronRight, Store } from 'lucide-react';
 import { AdminRole, AdminPermission, AdminUser, User, UserRole, VerificationStatus, Prescription, UserDocument, AuditLog } from '../../types';
@@ -1405,12 +1404,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <div className="animate-in fade-in duration-300">
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-2xl font-bold text-slate-900">System Overview</h2>
-                            <button 
-                                onClick={() => dbService.seedDatabase()}
-                                className="flex items-center gap-2 bg-slate-800 text-white px-4 py-2 rounded shadow hover:bg-slate-700 text-xs font-bold uppercase tracking-wider"
-                            >
-                                <Database className="w-4 h-4" /> Sync Seed Data
-                            </button>
+                            <div className="flex gap-2">
+                                <button 
+                                    onClick={() => window.location.reload()}
+                                    className="flex items-center gap-2 bg-indigo-50 text-indigo-700 px-4 py-2 rounded shadow-sm hover:bg-indigo-100 text-xs font-bold uppercase tracking-wider border border-indigo-200"
+                                >
+                                    <RefreshCw className="w-4 h-4" /> Refresh Data
+                                </button>
+                                <button 
+                                    onClick={() => dbService.seedDatabase()}
+                                    className="flex items-center gap-2 bg-slate-800 text-white px-4 py-2 rounded shadow hover:bg-slate-700 text-xs font-bold uppercase tracking-wider"
+                                >
+                                    <Database className="w-4 h-4" /> Sync Seed Data
+                                </button>
+                            </div>
                         </div>
                         <AdminStats users={users} onFilter={(s) => { setFilterStatus(s); setActiveView('REGISTRY'); }} />
                         <ApprovalQueue users={users} onAction={onUpdateStatus} onViewDocs={setViewDocs} />

@@ -1,7 +1,8 @@
+
 import React, { useEffect, useState } from 'react';
 import { Prescription } from '../../types';
 import { dbService } from '../../services/db';
-import { CheckCircle, ShieldCheck, Loader2, AlertCircle, FileText, User } from 'lucide-react';
+import { CheckCircle, ShieldCheck, Loader2, AlertCircle, FileText, User, RefreshCw } from 'lucide-react';
 
 interface Props {
     rxId: string;
@@ -13,22 +14,25 @@ export const RxVerification: React.FC<Props> = ({ rxId }) => {
     const [error, setError] = useState('');
 
     useEffect(() => {
-        const fetchRx = async () => {
-            try {
-                const data = await dbService.getPublicPrescription(rxId);
-                if (data) {
-                    setRx(data);
-                } else {
-                    setError('Prescription not found or invalid ID.');
-                }
-            } catch (e) {
-                setError('Unable to verify at this time. Please try again later.');
-            } finally {
-                setLoading(false);
-            }
-        };
         fetchRx();
     }, [rxId]);
+
+    const fetchRx = async () => {
+        setLoading(true);
+        setError('');
+        try {
+            const data = await dbService.getPublicPrescription(rxId);
+            if (data) {
+                setRx(data);
+            } else {
+                setError('Prescription Record Not Found in Secure Cloud.');
+            }
+        } catch (e) {
+            setError('Verification Error. The network request failed.');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     if (loading) {
         return (
@@ -48,7 +52,13 @@ export const RxVerification: React.FC<Props> = ({ rxId }) => {
                     <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4"/>
                     <h1 className="text-xl font-bold text-slate-900 mb-2">Verification Failed</h1>
                     <p className="text-slate-600 mb-4">{error}</p>
-                    <p className="text-xs text-slate-400">ID: {rxId}</p>
+                    <p className="text-xs text-slate-400 font-mono mb-6">ID: {rxId}</p>
+                    <button onClick={fetchRx} className="flex items-center justify-center w-full px-4 py-2 bg-slate-100 text-slate-700 rounded-md font-bold hover:bg-slate-200 transition-colors">
+                        <RefreshCw className="w-4 h-4 mr-2"/> Check Again
+                    </button>
+                    <p className="text-[10px] text-slate-400 mt-4">
+                        If this prescription was just issued, please ask the doctor to verify their internet connection and sync status.
+                    </p>
                 </div>
             </div>
         );

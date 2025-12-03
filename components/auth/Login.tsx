@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import { UserRole, User, VerificationStatus, DocumentType, UserDocument } from '../../types';
-import { Shield, ArrowRight, Loader2, AlertCircle, CheckCircle2, Building2, Stethoscope, CheckSquare, Upload } from 'lucide-react';
+import { Shield, ArrowRight, Loader2, AlertCircle, CheckCircle2, Building2, Stethoscope, Upload, WifiOff } from 'lucide-react';
 import { dbService } from '../../services/db';
 import { INDIAN_STATES, REG_NUMBER_REGEX, PHONE_REGEX, PINCODE_REGEX } from '../../constants';
 
@@ -97,7 +96,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
       }
   };
 
-  const handleRegisterSubmit = (e: React.FormEvent) => {
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
@@ -108,7 +107,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
         return;
     }
 
-    // Check if user exists
+    // Check if user exists locally
     if (users.some(u => u.email === email)) {
         setError("User with this email/username already exists.");
         setLoading(false);
@@ -146,10 +145,13 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
         return;
     }
 
+    // NORMAL DATABASE ID GENERATION (No Supabase Auth Requirement)
+    let authId = `${selectedRole === UserRole.DOCTOR ? 'DOC' : 'PH'}-${Date.now()}`;
+
     const documents = uploadedDoc ? [uploadedDoc] : [];
 
     const newUser: User = {
-        id: `${selectedRole === UserRole.DOCTOR ? 'DOC' : 'PH'}-${Date.now()}`,
+        id: authId,
         name: regName,
         email: email,
         password: password,
@@ -182,14 +184,14 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
     }, 1000);
   };
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
     setStatusMessage('');
 
-    // Authenticate
-    const user = users.find(u => u.email === email && u.password === password && u.role === selectedRole);
+    // Local check (App Registry)
+    let user = users.find(u => u.email === email && u.password === password && u.role === selectedRole);
 
     if (user) {
         // Check Status
@@ -233,24 +235,25 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
         }
     }
 
-    // For prototype, accept any 6 digits for others, but enforce check
     if (otp.length !== 6) {
         setLoading(false);
         setError("OTP must be 6 digits.");
         return;
     }
 
-    const user = users.find(u => u.email === email);
+    const user = users.find(u => u.email === email && u.role === selectedRole);
     
-    // CRITICAL: Log Security Action for Login
     if (user) {
         await dbService.logSecurityAction(user.id, 'USER_LOGIN_SUCCESS', '2FA Verified via OTP');
+        
+        setTimeout(() => {
+            setLoading(false);
+            onLogin(user);
+        }, 1000);
+    } else {
+        setLoading(false);
+        setError("Session Error. Please try again.");
     }
-
-    setTimeout(() => {
-      setLoading(false);
-      if (user) onLogin(user);
-    }, 1000);
   };
 
   return (
@@ -287,7 +290,6 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
           <button
             key={role}
             onClick={() => { 
-                // Admin cannot register via UI
                 if (mode === 'REGISTER' && role === UserRole.ADMIN) {
                     alert("Admin accounts can only be created by Super Admins.");
                     return;
@@ -395,7 +397,6 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
         ) : (
             /* REGISTRATION FORM */
             <form onSubmit={handleRegisterSubmit} className="space-y-4">
-                
                 {/* Common: Name */}
                 <div>
                     <label className="block text-sm font-medium text-slate-700">
@@ -652,8 +653,9 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
             </form>
         )}
       </div>
-      <div className="px-8 py-4 bg-slate-50 border-t border-slate-200 text-xs text-slate-500 text-center">
-        Compliance: DPDP Act 2023 & Telemedicine Guidelines 2020.
+      <div className="px-8 py-4 bg-slate-50 border-t border-slate-200 text-xs text-slate-500 text-center flex justify-between items-center">
+        <span>Compliance: DPDP Act 2023 & Telemedicine Guidelines.</span>
+        <span className="flex items-center gap-1 text-slate-400" title="Auth fallback active"><WifiOff className="w-3 h-3"/> Database Only Mode</span>
       </div>
     </div>
   );
