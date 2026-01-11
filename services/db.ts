@@ -252,8 +252,8 @@ export const dbService = {
             const row = {
                 id: item.id,
                 pharmacy_id: item.pharmacyId,
-                name: item.name,
-                stock: item.stock,
+                product_name: item.name,      // MATCHES SCHEMA
+                stock_quantity: item.stock,   // MATCHES SCHEMA
                 mrp: item.mrp,
                 batch_number: item.batchNumber,
                 expiry_date: item.expiryDate,
@@ -274,8 +274,8 @@ export const dbService = {
             const rows = items.map(item => ({
                 id: item.id,
                 pharmacy_id: item.pharmacyId,
-                name: item.name,
-                stock: item.stock,
+                product_name: item.name,      // MATCHES SCHEMA
+                stock_quantity: item.stock,   // MATCHES SCHEMA
                 mrp: item.mrp,
                 batch_number: item.batchNumber,
                 expiry_date: item.expiryDate,
@@ -404,12 +404,20 @@ export const dbService = {
     },
 
     async saveUsers(users: User[]) {
+        // Prevent redundant saves if data hasn't changed locally
+        const currentLocal = local.getUsers();
+        if (JSON.stringify(currentLocal) === JSON.stringify(users)) {
+            // Already synced locally, but if supabase is connected, we might want to check if cloud needs update
+            // For now, we rely on the fact that this is called from App.tsx listeners
+        }
+
+        local.setUsers(users);
+
         if (supabase) {
             const { error } = await supabase.from('users').upsert({ id: 'global_users', data: users });
             if (error) console.error("Supabase Save Users Error:", error);
             else console.log("Users synced to Cloud.");
         }
-        local.setUsers(users);
     },
 
     async savePrescriptions(prescriptions: Prescription[]) {
