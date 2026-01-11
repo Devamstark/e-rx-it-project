@@ -31,9 +31,12 @@ const getEnv = (key: string) => {
     return undefined;
 };
 
-// Use robust environment detection
-const SUPABASE_URL = getEnv('VITE_SUPABASE_URL');
-const SUPABASE_KEY = getEnv('VITE_SUPABASE_ANON_KEY');
+const FALLBACK_URL = 'https://xqhvjabpsiimxjpbhbih.supabase.co';
+const FALLBACK_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhxaHZqYWJwc2lpbXhqcGJoYmloIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2MzM3MTcsImV4cCI6MjA3OTIwOTcxN30._IUN318q5XbhV-VU8RAPTSuWh2NLqK2GK0P_Qzg9GuQ';
+
+// Use robust environment detection with hardcoded fallbacks for production
+const SUPABASE_URL = getEnv('VITE_SUPABASE_URL') || FALLBACK_URL;
+const SUPABASE_KEY = getEnv('VITE_SUPABASE_ANON_KEY') || FALLBACK_KEY;
 
 let supabase: SupabaseClient | null = null;
 
