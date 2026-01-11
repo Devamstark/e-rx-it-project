@@ -1,41 +1,58 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="DevXWorld e-Rx Hub: A secure, legally compliant e-prescription portal for verified Doctors and Pharmacies in India." />
-    <meta name="keywords" content="e-prescription, india, telemedicine, pharmacy, doctor, digital health, RMP, DPDP Act" />
-    <meta name="author" content="DevXWorld" />
-    <meta name="theme-color" content="#4338ca" />
-    <title>DevXWorld e-Rx Hub | Secure Medical Portal</title>
 
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-      html { scroll-behavior: smooth; }
-      body { 
-        font-family: 'Inter', sans-serif; 
-        background-color: #f8fafc; 
-        /* Removed overflow-x: hidden from body to allow better mobile scrolling control in React root */
-      }
-      /* Touch-friendly scrollbars */
-      ::-webkit-scrollbar {
-        width: 6px;
-        height: 6px;
-      }
-      ::-webkit-scrollbar-track {
-        background: transparent;
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #cbd5e1;
-        border-radius: 3px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #94a3b8;
-      }
-      /* Utilities */
-      .no-scrollbar::-webkit-scrollbar { display: none; }
-      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-    </style>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description"
+    content="DevXWorld e-Rx Hub: A secure, legally compliant e-prescription portal for verified Doctors and Pharmacies in India." />
+  <meta name="keywords"
+    content="e-prescription, india, telemedicine, pharmacy, doctor, digital health, RMP, DPDP Act" />
+  <meta name="author" content="DevXWorld" />
+  <meta name="theme-color" content="#4338ca" />
+  <title>DevXWorld e-Rx Hub | Secure Medical Portal</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f8fafc;
+      /* Removed overflow-x: hidden from body to allow better mobile scrolling control in React root */
+    }
+
+    /* Touch-friendly scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 3px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+
+    /* Utilities */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
   <script type="importmap">
 {
   "imports": {
@@ -54,11 +71,13 @@
   }
 }
 </script>
-<link rel="stylesheet" href="/index.css">
+
 </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="./index.tsx"></script>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="./index.tsx"></script>
   <script type="module" src="/index.tsx"></script>
 </body>
+
 </html>
