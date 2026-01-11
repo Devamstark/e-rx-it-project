@@ -20,10 +20,6 @@ const INITIAL_LAB_REFERRALS: LabReferral[] = [];
 const INITIAL_APPOINTMENTS: Appointment[] = [];
 const INITIAL_SUPPLIERS: Supplier[] = [];
 
-// --- Credentials ---
-const FALLBACK_URL = 'https://xqhvjabpsiimxjpbhbih.supabase.co';
-const FALLBACK_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhxaHZqYWJwc2lpbXhqcGJoYmloIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2MzM3MTcsImV4cCI6MjA3OTIwOTcxN30._IUN318q5XbhV-VU8RAPTSuWh2NLqK2GK0P_Qzg9GuQ';
-
 const getEnv = (key: string) => {
     try {
         const meta = import.meta as any;
@@ -35,16 +31,8 @@ const getEnv = (key: string) => {
     return undefined;
 };
 
-const getStoredConfig = () => {
-    const url = localStorage.getItem('devx_db_url');
-    const key = localStorage.getItem('devx_db_key');
-    if (url && key) return { url, key };
-    return null;
-};
-
-const stored = getStoredConfig();
-const SUPABASE_URL = getEnv('VITE_SUPABASE_URL') || stored?.url || FALLBACK_URL;
-const SUPABASE_KEY = getEnv('VITE_SUPABASE_ANON_KEY') || stored?.key || FALLBACK_KEY;
+const SUPABASE_URL = getEnv('VITE_SUPABASE_URL');
+const SUPABASE_KEY = getEnv('VITE_SUPABASE_ANON_KEY');
 
 let supabase: SupabaseClient | null = null;
 
@@ -154,16 +142,40 @@ const local = {
 export const dbService = {
     isCloudEnabled: () => !!supabase,
 
-    configureCloud: (url: string, key: string) => {
-        localStorage.setItem('devx_db_url', url);
-        localStorage.setItem('devx_db_key', key);
-        window.location.reload();
+    async signUp(email: string, password: string, userData: User): Promise<string | null> {
+        if (!supabase) return null;
+
+        // 1. Create Auth User
+        const { data, error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+                data: { role: userData.role, full_name: userData.name }
+            }
+        });
+
+        if (error) {
+            console.error("Supabase Auth Signup Error:", error.message);
+            throw error;
+        }
+
+        if (data.user) {
+            // 2. Return the new Supabase ID so the frontend can use it
+            return data.user.id;
+        }
+        return null;
     },
 
-    disconnectCloud: () => {
-        localStorage.removeItem('devx_db_url');
-        localStorage.removeItem('devx_db_key');
-        window.location.reload();
+    async login(email: string, password: string): Promise<User | null> {
+        if (!supabase) return null;
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) {
+            console.error("Supabase Auth Error:", error.message);
+            return null;
+        }
+        // After auth, load the user profile from our global list
+        const { users } = await this.loadData();
+        return users.find(u => u.id === data.user.id) || null;
     },
 
     async getPublicPrescription(id: string): Promise<Prescription | null> {
@@ -308,7 +320,7 @@ export const dbService = {
             // USERS
             const { data: userData, error: userError } = await supabase.from('users').select('data').eq('id', 'global_users').single();
             if (userError && userError.code !== 'PGRST116') console.warn("Sync Users Error:", userError.message);
-            
+
             const cloudUsers = userData ? (userData.data as User[]) : [];
             const mergedUsers = mergeData(cloudUsers, local.getUsers());
             if (mergedUsers.length === 0) mergedUsers.push(...INITIAL_USERS);
@@ -318,13 +330,13 @@ export const dbService = {
             const { data: rxRows } = await supabase.from('prescriptions').select('*');
             if (rxRows) cloudRx = rxRows.filter(r => r.id !== 'global_prescriptions').map(r => r.data as Prescription);
             const mergedRx = mergeData(cloudRx, local.getRx());
-            
+
             // PATIENTS
             const { data: patientRows } = await supabase.from('patients').select('data');
             const cloudPatients = patientRows ? patientRows.map(r => r.data as Patient) : [];
             const mergedPatients = mergeData(cloudPatients, local.getPatients());
             if (mergedPatients.length > 0) local.setPatients(mergedPatients);
-            
+
             // LAB REFERRALS
             const { data: labRows } = await supabase.from('lab_referrals').select('data');
             const cloudLabs = labRows ? labRows.map(r => r.data as LabReferral) : [];
@@ -400,16 +412,16 @@ export const dbService = {
                 const rows = prescriptions.map(rx => ({
                     id: rx.id,
                     doctor_id: rx.doctorId,
-                    patient_id: rx.patientId || null, 
-                    pharmacy_id: rx.pharmacyId || null, 
-                    status: rx.status, 
+                    patient_id: rx.patientId || null,
+                    pharmacy_id: rx.pharmacyId || null,
+                    status: rx.status,
                     date: rx.date,
                     data: rx
                 }));
-                
+
                 // Attempt standard save
                 const { error } = await supabase.from('prescriptions').upsert(rows);
-                
+
                 if (error) {
                     console.error("Supabase Save Rx Error (Relational):", error);
                     // Fallback: Always try to save even if relational keys fail (e.g. missing patient_id in DB)
@@ -419,7 +431,7 @@ export const dbService = {
                         id: rx.id,
                         doctor_id: rx.doctorId,
                         patient_id: null, // Break relational link
-                        pharmacy_id: null, 
+                        pharmacy_id: null,
                         status: rx.status,
                         date: rx.date,
                         data: rx
@@ -439,13 +451,13 @@ export const dbService = {
         if (supabase) {
             const rows = patients.map(p => ({
                 id: p.id,
-                owner_doctor_id: p.doctorId,
+                doctor_id: p.doctorId,
                 full_name: p.fullName,
                 phone: p.phone,
                 data: p
             }));
             const { error } = await supabase.from('patients').upsert(rows);
-            if(error) console.error("Save Patients Error:", error);
+            if (error) console.error("Save Patients Error:", error);
         }
         local.setPatients(patients);
     },
@@ -565,19 +577,19 @@ export const dbService = {
     // --- Utility Methods ---
     async logSecurityAction(userId: string, action: string, details: string) {
         const log: AuditLog = {
-            id: `LOG-${Date.now()}-${Math.random().toString(36).substr(2,9)}`,
+            id: `LOG-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             actorId: userId,
             action,
             details,
             timestamp: new Date().toISOString()
         };
         const currentLogs = local.getAuditLogs();
-        const updatedLogs = [log, ...currentLogs].slice(0, 1000); 
+        const updatedLogs = [log, ...currentLogs].slice(0, 1000);
         local.setAuditLogs(updatedLogs);
         if (supabase) {
             try {
                 await supabase.from('system_logs').upsert({ id: 'global_audit_logs', data: updatedLogs });
-            } catch (e) {}
+            } catch (e) { }
         }
     },
 
@@ -612,7 +624,7 @@ export const dbService = {
     getExpenses: () => local.getExpenses(),
 
     async seedDatabase() {
-        if(!supabase) return;
+        if (!supabase) return;
         await this.saveUsers(INITIAL_USERS);
         await this.savePrescriptions(INITIAL_RX);
         await this.saveLabReferrals(INITIAL_LAB_REFERRALS);

@@ -364,17 +364,23 @@ function App() {
     };
 
     const handleLogin = async (user: User) => {
+        // Authenticate Supabase client for RLS
+        if (user.email && user.password) {
+            await dbService.login(user.email, user.password);
+        }
+
         setCurrentUser(user);
         localStorage.setItem('devx_active_session_id', user.id);
         lastActivityRef.current = Date.now(); // Reset timer on login
 
         // RELOAD CRITICAL DATA ON LOGIN
         // This ensures that RLS-protected rows (patients) are fetched after the session is established.
-        const { auditLogs: freshLogs, patients: freshPatients } = await dbService.loadData();
+        const { auditLogs: freshLogs, patients: freshPatients, rx: freshRx, appointments: freshApts } = await dbService.loadData();
         setAuditLogs(freshLogs);
-        if (freshPatients.length > 0) {
-            setPatients(freshPatients);
-        }
+
+        if (freshPatients.length > 0) setPatients(freshPatients);
+        if (freshRx.length > 0) setPrescriptions(freshRx);
+        if (freshApts.length > 0) setAppointments(freshApts);
     };
 
     const handleDoctorVerificationComplete = (profile: DoctorProfile) => {
