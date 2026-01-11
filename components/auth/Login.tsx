@@ -152,10 +152,9 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
                 name: regName
             } as User);
 
-            if (!authId) throw new Error("Could not create Auth account.");
-
+            // authId is guaranteed here because signUp throws if it fails
             const newUser: User = {
-                id: authId, // Use the REAL Supabase UID
+                id: authId!,
                 name: regName,
                 email: email,
                 password: password,
@@ -180,10 +179,11 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
             onRegister(newUser);
             setLoading(false);
             setMode('LOGIN');
-            setStatusMessage("Registration Successful! Please check your email for confirmation (if enabled) and wait for Admin Approval.");
+            setStatusMessage("Registration Successful! Please check your email for confirmation and wait for Admin Approval.");
             resetForm();
         } catch (err: any) {
-            setError(err.message || "Registration failed");
+            console.error("Signup Failed:", err);
+            setError(err.message || "Registration failed. Is the database connected?");
             setLoading(false);
         }
     };
@@ -302,8 +302,8 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
                             resetForm();
                         }}
                         className={`flex-1 py-3 text-xs font-bold tracking-wider transition-colors ${selectedRole === role
-                                ? 'bg-white text-indigo-700 border-b-2 border-indigo-600'
-                                : 'bg-slate-50 text-slate-400 hover:text-slate-600'
+                            ? 'bg-white text-indigo-700 border-b-2 border-indigo-600'
+                            : 'bg-slate-50 text-slate-400 hover:text-slate-600'
                             }`}
                     >
                         {role === UserRole.DOCTOR && <span className="flex items-center justify-center"><Stethoscope className="w-3 h-3 mr-1" /> DOCTOR</span>}

@@ -31,6 +31,7 @@ const getEnv = (key: string) => {
     return undefined;
 };
 
+// Use robust environment detection
 const SUPABASE_URL = getEnv('VITE_SUPABASE_URL');
 const SUPABASE_KEY = getEnv('VITE_SUPABASE_ANON_KEY');
 
@@ -39,12 +40,12 @@ let supabase: SupabaseClient | null = null;
 if (SUPABASE_URL && SUPABASE_KEY) {
     try {
         supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-        console.log("DevXWorld: Connected to Cloud Database");
+        console.log("🚀 DevXWorld: Connected to Supabase Cloud");
     } catch (e) {
-        console.warn("DevXWorld: Failed to initialize Supabase client", e);
+        console.warn("❌ DevXWorld: Supabase Connection Failed", e);
     }
 } else {
-    console.log("DevXWorld: Running in Local Storage Mode");
+    console.log("📦 DevXWorld: Running in Offline-First Local Mode");
 }
 
 // --- Helper: Local Storage ---
@@ -143,7 +144,9 @@ export const dbService = {
     isCloudEnabled: () => !!supabase,
 
     async signUp(email: string, password: string, userData: User): Promise<string | null> {
-        if (!supabase) return null;
+        if (!supabase) {
+            throw new Error("Cloud Database is not connected. Please check your .env configuration.");
+        }
 
         // 1. Create Auth User
         const { data, error } = await supabase.auth.signUp({
