@@ -1,6 +1,5 @@
-
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { User, Prescription, UserRole, VerificationStatus, Patient, AuditLog, PrescriptionTemplate, Supplier, Customer, Sale, Expense, SalesReturn, LabReferral, Appointment, MedicalCertificate, InventoryItem } from '../types';
+import { Prescription, User, InventoryItem, Supplier, Customer, Sale, SalesReturn, Expense, AuditLog, Appointment, LabReferral, MedicalCertificate, PrescriptionTemplate, UserRole, VerificationStatus, Patient, PatientAccount } from '../types';
 
 // --- Default Initial State (Used if DB is empty) ---
 const INITIAL_USERS: User[] = [
@@ -104,6 +103,12 @@ const local = {
     },
     setTemplates: (templates: PrescriptionTemplate[]) => localStorage.setItem('devx_rx_templates', JSON.stringify(templates)),
 
+    getPatientAccounts: (): PatientAccount[] => {
+        const s = localStorage.getItem('devx_patient_accounts');
+        return s ? JSON.parse(s) : [];
+    },
+    setPatientAccounts: (data: PatientAccount[]) => localStorage.setItem('devx_patient_accounts', JSON.stringify(data)),
+
     // ERP Entities
     getSuppliers: (): Supplier[] => {
         const s = localStorage.getItem('devx_suppliers');
@@ -179,9 +184,71 @@ export const dbService = {
             console.error("Supabase Auth Error:", error.message);
             return null;
         }
+
+        // --- NEW: Identify Patient Context ---
+        const patientId = await this.getPatientIdFromAuth(data.user.id);
+        if (patientId) {
+            const { data: pData } = await supabase.from('patients').select('data').eq('id', patientId).single();
+            if (pData) {
+                const patient = pData.data as Patient;
+                return {
+                    id: data.user.id,
+                    name: patient.fullName,
+                    email: patient.email || email,
+                    role: UserRole.PATIENT,
+                    verificationStatus: VerificationStatus.VERIFIED,
+                    registrationDate: patient.registeredAt
+                } as User;
+            }
+        }
+
         // After auth, load the user profile from our global list
         const { users } = await this.loadData();
         return users.find(u => u.id === data.user.id) || null;
+    },
+
+    async grantPatientAccess(patientId: string, patientName: string, email: string, password: string, pharmacyId: string) {
+        if (!supabase) throw new Error("Cloud Database is not connected.");
+
+        const { data, error } = await supabase.functions.invoke('grant-patient-access', {
+            body: { email, password, patientId, pharmacyId, patientName }
+        });
+
+        if (error) throw error;
+        return data;
+    },
+
+    async getPatientAccount(patientId: string): Promise<PatientAccount | null> {
+        if (!supabase) return null;
+        const { data } = await supabase.from('patient_accounts').select('*').eq('patient_id', patientId).single();
+        if (!data) return null;
+        return {
+            id: data.id,
+            patientId: data.patient_id,
+            authUserId: data.auth_user_id,
+            status: data.status,
+            createdAt: data.created_at,
+            enabledByPharmacyId: data.enabled_by_pharmacy_id
+        };
+    },
+
+    async getPatientIdFromAuth(authUserId: string) {
+        if (!supabase) return null;
+        const { data } = await supabase.from('patient_accounts').select('patient_id').eq('auth_user_id', authUserId).single();
+        return data?.patient_id;
+    },
+
+    async getPatientAccounts(): Promise<PatientAccount[]> {
+        if (!supabase) return [];
+        const { data } = await supabase.from('patient_accounts').select('*');
+        return (data || []).map(acc => ({
+            id: acc.id,
+            patientId: acc.patient_id,
+            authUserId: acc.auth_user_id,
+            status: acc.status,
+            createdAt: acc.created_at,
+            enabledByPharmacyId: acc.enabled_by_pharmacy_id
+        }));
     },
 
     async getPublicPrescription(id: string): Promise<Prescription | null> {
@@ -295,7 +362,8 @@ export const dbService = {
         labReferrals: LabReferral[],
         appointments: Appointment[],
         certificates: MedicalCertificate[],
-        salesReturns: SalesReturn[]
+        salesReturns: SalesReturn[],
+        patientAccounts: PatientAccount[]
     }> {
         if (!supabase) {
             return {
@@ -306,7 +374,8 @@ export const dbService = {
                 labReferrals: local.getLabReferrals(),
                 appointments: local.getAppointments(),
                 certificates: local.getMedicalCertificates(),
-                salesReturns: local.getSalesReturns()
+                salesReturns: local.getSalesReturns(),
+                patientAccounts: local.getPatientAccounts()
             };
         }
 
@@ -378,6 +447,9 @@ export const dbService = {
             const { data: expRows } = await supabase.from('expenses').select('data');
             if (expRows && expRows.length > 0) local.setExpenses(expRows.map(r => r.data));
 
+            const patientAccounts = await this.getPatientAccounts();
+            if (patientAccounts.length > 0) local.setPatientAccounts(patientAccounts);
+
             return {
                 users: mergedUsers,
                 rx: mergedRx,
@@ -386,7 +458,8 @@ export const dbService = {
                 labReferrals: mergedLabs,
                 appointments: mergedApts,
                 certificates: mergedCerts,
-                salesReturns: local.getSalesReturns() // ERP is already sync'd above
+                salesReturns: local.getSalesReturns(), // ERP is already sync'd above
+                patientAccounts: patientAccounts
             };
         } catch (e) {
             console.error("Load failed", e);
@@ -398,7 +471,8 @@ export const dbService = {
                 labReferrals: local.getLabReferrals(),
                 appointments: local.getAppointments(),
                 certificates: local.getMedicalCertificates(),
-                salesReturns: local.getSalesReturns()
+                salesReturns: local.getSalesReturns(),
+                patientAccounts: local.getPatientAccounts()
             };
         }
     },
@@ -521,6 +595,10 @@ export const dbService = {
             await supabase.from('med_certificates').upsert(rows);
         }
         local.setMedicalCertificates(data);
+    },
+
+    savePatientAccounts(data: PatientAccount[]) {
+        local.setPatientAccounts(data);
     },
 
     // --- ERP SAVERS (Relational) ---

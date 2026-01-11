@@ -3,7 +3,8 @@
 export enum UserRole {
   DOCTOR = 'DOCTOR',
   PHARMACY = 'PHARMACY',
-  ADMIN = 'ADMIN'
+  ADMIN = 'ADMIN',
+  PATIENT = 'PATIENT'
 }
 
 export enum VerificationStatus {
@@ -49,25 +50,25 @@ export interface UserDocument {
 }
 
 export interface DbConfig {
-    url: string;
-    key: string;
+  url: string;
+  key: string;
 }
 
 export interface InventoryItem {
   id: string;
   pharmacyId?: string; // Added for relational mapping
   name: string;
-  genericName?: string; 
+  genericName?: string;
   manufacturer: string;
   batchNumber: string;
   barcode?: string;
   expiryDate: string;
   stock: number;
   minStockLevel: number;
-  purchasePrice: number; 
-  mrp: number; 
-  unitPrice?: number; 
-  isNarcotic: boolean; 
+  purchasePrice: number;
+  mrp: number;
+  unitPrice?: number;
+  isNarcotic: boolean;
   gstPercentage?: number;
   hsnCode?: string;
 }
@@ -84,31 +85,32 @@ export interface DoctorDirectoryEntry {
 
 export interface Patient {
   id: string;
-  doctorId: string; 
+  doctorId: string;
   fullName: string;
   dateOfBirth: string;
   gender: 'Male' | 'Female' | 'Other';
   phone: string;
   address: string;
+  email?: string;
   emergencyContact?: string;
-  
+
   // ABDM / ABHA Integration
   abhaNumber?: string;   // 14 digit ID
   abhaAddress?: string;  // e.g. name@abdm
   isAbhaVerified?: boolean;
 
-  height?: string; 
-  weight?: string; 
+  height?: string;
+  weight?: string;
   bloodGroup?: string;
 
-  allergies: string[]; 
-  chronicConditions: string[]; 
+  allergies: string[];
+  chronicConditions: string[];
   pastSurgeries?: string;
   currentMedications?: string;
   familyHistory?: string;
   pastMedications?: string;
   documents?: UserDocument[];
-  
+
   notes?: string;
   registeredAt: string;
 }
@@ -117,19 +119,19 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  password?: string; 
+  password?: string;
   role: UserRole;
   verificationStatus: VerificationStatus;
   registrationDate: string;
-  
+
   licenseNumber?: string;
   state?: string;
-  gstin?: string; 
-  
+  gstin?: string;
+
   documents?: UserDocument[];
 
-  qualifications?: string; 
-  nmrUid?: string; 
+  qualifications?: string;
+  nmrUid?: string;
   clinicName?: string;
   clinicAddress?: string;
   city?: string;
@@ -160,10 +162,10 @@ export interface AdminUser {
 
 export interface DoctorProfile {
   devxId: string;
-  medicalDegree: string; 
-  qualifications: string; 
+  medicalDegree: string;
+  qualifications: string;
   registrationNumber: string;
-  nmrUid: string; 
+  nmrUid: string;
   stateCouncil: string;
   specialty?: string;
   clinicName: string;
@@ -178,10 +180,10 @@ export interface DoctorProfile {
 
 export interface Medicine {
   name: string;
-  dosage: string; 
-  frequency: string; 
-  duration: string; 
-  instructions: string; 
+  dosage: string;
+  frequency: string;
+  duration: string;
+  instructions: string;
 }
 
 export interface DoctorDetailsSnapshot {
@@ -212,42 +214,42 @@ export interface PrescriptionVitals {
 export interface Prescription {
   id: string;
   doctorId: string;
-  doctorName: string; 
-  doctorDetails?: DoctorDetailsSnapshot; 
-  patientId?: string; 
+  doctorName: string;
+  doctorDetails?: DoctorDetailsSnapshot;
+  patientId?: string;
   patientName: string;
   patientAge: number;
   patientGender: 'Male' | 'Female' | 'Other';
   patientPhone?: string;    // Snapshot
   patientAddress?: string;  // Snapshot
   patientDOB?: string;      // Snapshot
-  
+
   // Clinical Data
   vitals?: PrescriptionVitals;
   diagnosis: string;
   medicines: Medicine[];
   advice: string;
-  
-  date: string; 
+
+  date: string;
   status: 'ISSUED' | 'DISPENSED' | 'REJECTED' | 'CANCELLED' | 'REJECTED_STOCK' | 'SENT_TO_PHARMACY';
   pharmacyId?: string;
   pharmacyName?: string;
   digitalSignatureToken: string;
-  
+
   refills?: number;
   followUpDate?: string;
-  
+
   // ABDM Link
   linkedToAbha?: boolean;
 }
 
 export interface PrescriptionTemplate {
-    id: string;
-    name: string; 
-    doctorId: string;
-    diagnosis: string;
-    medicines: Medicine[];
-    advice: string;
+  id: string;
+  name: string;
+  doctorId: string;
+  diagnosis: string;
+  medicines: Medicine[];
+  advice: string;
 }
 
 export interface LabReferral {
@@ -262,14 +264,14 @@ export interface LabReferral {
   patientPhone?: string;
   patientWeight?: string;
   patientHeight?: string;
-  
+
   doctorId: string;
   doctorName: string;
   testName: string;
   labName?: string;
   date: string;
   status: 'PENDING' | 'COMPLETED';
-  reportUrl?: string; 
+  reportUrl?: string;
   notes?: string;
   accessCode?: string;
 }
@@ -327,7 +329,7 @@ export interface Supplier {
   email?: string;
   gstin?: string;
   address?: string;
-  balance: number; 
+  balance: number;
 }
 
 export interface Customer {
@@ -337,7 +339,7 @@ export interface Customer {
   phone: string;
   email?: string;
   address?: string;
-  balance: number; 
+  balance: number;
 }
 
 export interface SaleItem {
@@ -346,8 +348,8 @@ export interface SaleItem {
   batchNumber: string;
   expiryDate: string;
   quantity: number;
-  mrp: number; 
-  costPrice: number; 
+  mrp: number;
+  costPrice: number;
   gstPercentage: number;
   discount: number;
   total: number;
@@ -357,7 +359,7 @@ export interface Sale {
   id: string;
   pharmacyId: string; // Already exists
   invoiceNumber: string;
-  date: string; 
+  date: string;
   customerId?: string;
   customerName?: string;
   items: SaleItem[];
@@ -365,52 +367,62 @@ export interface Sale {
   gstAmount: number;
   discountAmount: number;
   roundedTotal: number;
-  amountPaid?: number; 
-  balanceDue?: number; 
+  amountPaid?: number;
+  balanceDue?: number;
   paymentMode: 'CASH' | 'UPI' | 'CARD' | 'CREDIT' | 'PARTIAL';
 }
 
 export interface SalesReturn {
-    id: string;
-    pharmacyId?: string; // Added for RLS
-    originalInvoiceId: string;
-    invoiceNumber: string; 
-    date: string;
-    customerName: string;
-    items: SaleItem[]; 
-    refundAmount: number;
-    reason: string;
+  id: string;
+  pharmacyId?: string; // Added for RLS
+  originalInvoiceId: string;
+  invoiceNumber: string;
+  date: string;
+  customerName: string;
+  items: SaleItem[];
+  refundAmount: number;
+  reason: string;
 }
 
 export interface GRNItem {
-    name: string;
-    manufacturer: string;
-    batchNumber: string;
-    expiryDate: string;
-    quantity: number;
-    purchasePrice: number;
-    mrp: number;
-    gstPercentage: number;
-    isNarcotic: boolean;
-    hsnCode?: string;
+  name: string;
+  manufacturer: string;
+  batchNumber: string;
+  expiryDate: string;
+  quantity: number;
+  purchasePrice: number;
+  mrp: number;
+  gstPercentage: number;
+  isNarcotic: boolean;
+  hsnCode?: string;
 }
 
 export interface GRN {
-    id: string;
-    supplierId: string;
-    supplierName: string;
-    date: string;
-    invoiceNumber: string;
-    items: GRNItem[];
-    totalAmount: number;
-    pharmacyId: string;
+  id: string;
+  supplierId: string;
+  supplierName: string;
+  date: string;
+  invoiceNumber: string;
+  items: GRNItem[];
+  totalAmount: number;
+  pharmacyId: string;
 }
 
 export interface Expense {
-    id: string;
-    date: string;
-    category: string; 
-    description: string;
-    amount: number;
-    pharmacyId: string;
+  id: string;
+  date: string;
+  category: string;
+  description: string;
+  amount: number;
+  pharmacyId: string;
+}
+
+export interface PatientAccount {
+  id: string;
+  patientId: string;
+  authUserId: string;
+  email?: string;
+  enabledByPharmacyId: string;
+  status: 'active' | 'disabled';
+  createdAt: string;
 }

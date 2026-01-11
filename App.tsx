@@ -4,7 +4,7 @@ import { Layout } from './components/ui/Layout';
 import { Login } from './components/auth/Login';
 import { RxVerification } from './components/public/RxVerification';
 import { LabReportUpload } from './components/public/LabReportUpload';
-import { User, UserRole, VerificationStatus, DoctorProfile, Prescription, Patient, AuditLog, SalesReturn, LabReferral, Appointment, MedicalCertificate } from './types';
+import { User, UserRole, VerificationStatus, DoctorProfile, Prescription, Patient, AuditLog, SalesReturn, LabReferral, Appointment, MedicalCertificate, PatientAccount } from './types';
 import { dbService } from './services/db';
 import { Loader2, Clock, LogOut } from 'lucide-react';
 import { DocumentationViewer } from './components/ui/DocumentationViewer';
@@ -13,6 +13,7 @@ import { DocumentationViewer } from './components/ui/DocumentationViewer';
 const DoctorDashboard = lazy(() => import('./components/doctor/DoctorDashboard').then(module => ({ default: module.DoctorDashboard })));
 const PharmacyDashboard = lazy(() => import('./components/pharmacy/PharmacyDashboard').then(module => ({ default: module.PharmacyDashboard })));
 const AdminDashboard = lazy(() => import('./components/admin/AdminDashboard').then(module => ({ default: module.AdminDashboard })));
+const PatientDashboard = lazy(() => import('./components/patient/PatientDashboard').then(module => ({ default: module.PatientDashboard })));
 
 
 // Session Timeout Constants
@@ -58,6 +59,7 @@ function App() {
     const [labReferrals, setLabReferrals] = useState<LabReferral[]>([]);
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [certificates, setCertificates] = useState<MedicalCertificate[]>([]);
+    const [patientAccounts, setPatientAccounts] = useState<PatientAccount[]>([]);
 
     // Session Management State
     const [showSessionWarning, setShowSessionWarning] = useState(false);
@@ -69,9 +71,22 @@ function App() {
         if (currentUser) {
             await dbService.logSecurityAction(currentUser.id, 'USER_LOGOUT', 'Session terminated/Logout');
         }
+
+        // 1. Clear Session
         setCurrentUser(null);
         localStorage.removeItem('devx_active_session_id');
         setShowSessionWarning(false);
+
+        // 2. Clear Sensitive Memory State
+        setPrescriptions([]);
+        setPatients([]);
+        setAuditLogs([]);
+        setSalesReturns([]);
+        setLabReferrals([]);
+        setAppointments([]);
+        setCertificates([]);
+        setPatientAccounts([]);
+
         // NO CLOUD SIGNOUT NEEDED (Simple DB Mode)
     }, [currentUser]);
 
@@ -110,7 +125,7 @@ function App() {
     // --- Initialization & Session Restore ---
     useEffect(() => {
         const init = async () => {
-            const { users, rx, patients: loadedPatients, auditLogs: loadedLogs, labReferrals: loadedLabs, appointments: loadedApts, certificates: loadedCerts } = await dbService.loadData();
+            const { users, rx, patients: loadedPatients, auditLogs: loadedLogs, labReferrals: loadedLabs, appointments: loadedApts, certificates: loadedCerts, patientAccounts: loadedAccs } = await dbService.loadData();
             setRegisteredUsers(users);
             setPrescriptions(rx);
             setPatients(loadedPatients);
@@ -119,6 +134,7 @@ function App() {
             setSalesReturns(dbService.getSalesReturns()); // Load returns
             setAppointments(loadedApts);
             setCertificates(loadedCerts);
+            setPatientAccounts(loadedAccs);
 
             // Restore Session
             try {
@@ -188,6 +204,12 @@ function App() {
             dbService.saveCertificates(certificates);
         }
     }, [certificates, isLoaded]);
+
+    useEffect(() => {
+        if (isLoaded) {
+            dbService.savePatientAccounts(patientAccounts);
+        }
+    }, [patientAccounts, isLoaded]);
 
     // Sync currentUser state with registeredUsers updates
     useEffect(() => {
@@ -364,23 +386,25 @@ function App() {
     };
 
     const handleLogin = async (user: User) => {
-        // Authenticate Supabase client for RLS
+        // 1. Authenticate Supabase client for RLS (CRITICAL - must happen before redirection)
         if (user.email && user.password) {
             await dbService.login(user.email, user.password);
         }
 
+        // 2. Immediate UI Transition
         setCurrentUser(user);
         localStorage.setItem('devx_active_session_id', user.id);
-        lastActivityRef.current = Date.now(); // Reset timer on login
+        lastActivityRef.current = Date.now();
 
-        // RELOAD CRITICAL DATA ON LOGIN
-        // This ensures that RLS-protected rows (patients) are fetched after the session is established.
-        const { auditLogs: freshLogs, patients: freshPatients, rx: freshRx, appointments: freshApts } = await dbService.loadData();
-        setAuditLogs(freshLogs);
-
-        if (freshPatients.length > 0) setPatients(freshPatients);
-        if (freshRx.length > 0) setPrescriptions(freshRx);
-        if (freshApts.length > 0) setAppointments(freshApts);
+        // 3. Background Data Refresh
+        // We catch the data in background; dashboards have their own effects but this keeps global sync
+        dbService.loadData().then(({ auditLogs: freshLogs, patients: freshPatients, rx: freshRx, appointments: freshApts, patientAccounts: freshAccs }) => {
+            setAuditLogs(freshLogs);
+            if (freshPatients.length > 0) setPatients(freshPatients);
+            if (freshRx.length > 0) setPrescriptions(freshRx);
+            if (freshApts.length > 0) setAppointments(freshApts);
+            if (freshAccs && freshAccs.length > 0) setPatientAccounts(freshAccs);
+        }).catch(err => console.error("Background sync failed:", err));
     };
 
     const handleDoctorVerificationComplete = (profile: DoctorProfile) => {
@@ -475,6 +499,13 @@ function App() {
                                     onEditUser={handleUpdateUser}
                                     auditLogs={auditLogs}
                                     onAddDirectoryEntry={handleAddDirectoryEntry}
+                                    patientAccounts={patientAccounts}
+                                />
+                            )}
+                            {currentUser.role === UserRole.PATIENT && (
+                                <PatientDashboard
+                                    currentUser={currentUser}
+                                    onLogout={handleLogout}
                                 />
                             )}
                         </Suspense>

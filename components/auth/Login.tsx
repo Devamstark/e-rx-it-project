@@ -5,7 +5,7 @@ import { dbService } from '../../services/db';
 import { INDIAN_STATES, REG_NUMBER_REGEX, PHONE_REGEX, PINCODE_REGEX } from '../../constants';
 
 interface LoginProps {
-    onLogin: (user: User) => void;
+    onLogin: (user: User) => Promise<void>;
     users: User[];
     onRegister: (user: User) => boolean;
 }
@@ -215,11 +215,9 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
                 return;
             }
 
-            // Proceed to OTP
-            setTimeout(() => {
-                setLoading(false);
-                setStep('OTP');
-            }, 800);
+            // Proceed to OTP instantly for better UX
+            setLoading(false);
+            setStep('OTP');
         } else {
             setLoading(false);
             setError("Invalid Credentials or Role selection.");
@@ -248,12 +246,16 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
         const user = users.find(u => u.email === email && u.role === selectedRole);
 
         if (user) {
-            await dbService.logSecurityAction(user.id, 'USER_LOGIN_SUCCESS', '2FA Verified via OTP');
-
-            setTimeout(() => {
+            try {
+                // Log action and await the login process (db session + data reload)
+                // We keep loading=true so the user doesn't click again
+                await dbService.logSecurityAction(user.id, 'USER_LOGIN_SUCCESS', '2FA Verified via OTP');
+                await onLogin(user);
+            } catch (err: any) {
+                console.error("Login redirect failed:", err);
+                setError(err.message || "Session Error. Please try again.");
                 setLoading(false);
-                onLogin(user);
-            }, 1000);
+            }
         } else {
             setLoading(false);
             setError("Session Error. Please try again.");

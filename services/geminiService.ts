@@ -4,9 +4,14 @@ import { Medicine, InventoryItem, Sale } from "../types";
 
 const getClient = () => {
     let apiKey = '';
+
+    // Check various common environment variable locations for maximum compatibility
     try {
-        // Safety check: process might not be defined in strict browser environments
-        if (typeof process !== 'undefined' && process.env?.API_KEY) {
+        if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GEMINI_API_KEY) {
+            apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+        } else if (typeof process !== 'undefined' && process.env?.GEMINI_API_KEY) {
+            apiKey = process.env.GEMINI_API_KEY;
+        } else if (typeof process !== 'undefined' && process.env?.API_KEY) {
             apiKey = process.env.API_KEY;
         }
     } catch (e) {
@@ -14,7 +19,7 @@ const getClient = () => {
     }
 
     if (!apiKey) {
-        console.warn("API Key not found in environment variables.");
+        console.warn("Gemini API Key not found in environment. AI features will be disabled.");
         return null;
     }
     return new GoogleGenAI({ apiKey });
@@ -52,9 +57,9 @@ export const analyzePrescriptionSafety = async (
                     type: Type.OBJECT,
                     properties: {
                         safe: { type: Type.BOOLEAN },
-                        warnings: { 
-                            type: Type.ARRAY, 
-                            items: { type: Type.STRING } 
+                        warnings: {
+                            type: Type.ARRAY,
+                            items: { type: Type.STRING }
                         },
                         advice: { type: Type.STRING }
                     },
@@ -77,10 +82,10 @@ export const analyzePrescriptionSafety = async (
 export const getPharmacyAIInsights = async (
     inventory: InventoryItem[],
     recentSales: Sale[]
-): Promise<{ 
-    reorderSuggestions: { itemName: string, reason: string }[], 
+): Promise<{
+    reorderSuggestions: { itemName: string, reason: string }[],
     pricingTips: { itemName: string, tip: string }[],
-    anomalies: string[] 
+    anomalies: string[]
 }> => {
     const ai = getClient();
     if (!ai) {
@@ -110,7 +115,7 @@ export const getPharmacyAIInsights = async (
     `;
 
     try {
-         const response = await ai.models.generateContent({
+        const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
             contents: prompt,
             config: {
@@ -129,7 +134,7 @@ export const getPharmacyAIInsights = async (
                             }
                         },
                         pricingTips: {
-                             type: Type.ARRAY,
+                            type: Type.ARRAY,
                             items: {
                                 type: Type.OBJECT,
                                 properties: {
@@ -146,10 +151,10 @@ export const getPharmacyAIInsights = async (
                 }
             }
         });
-        
+
         const text = response.text;
         if (text) {
-             return JSON.parse(text);
+            return JSON.parse(text);
         }
         return { reorderSuggestions: [], pricingTips: [], anomalies: [] };
 

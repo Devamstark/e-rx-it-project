@@ -1,9 +1,10 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { CheckCircle, Package, Search, Users, ShoppingCart, Plus, Save, Trash2, Stethoscope, BarChart3, ScanBarcode, X, Activity, Calculator, FileText, Phone, MapPin, Edit2, AlertOctagon, Receipt, Truck, BookOpen, BrainCircuit, CreditCard, Filter, Building2, Printer, RotateCcw, AlertTriangle, UserPlus, UserCheck, ArrowRight, User, Wallet, ArrowLeft, Keyboard, PauseCircle, PlayCircle, AlertCircle, Tag, RefreshCw, Calendar, Clock, ChevronRight } from 'lucide-react';
-import { Prescription, User as UserType, InventoryItem, DoctorDirectoryEntry, Patient, Supplier, Customer, Sale, SaleItem, GRN, Expense, SalesReturn, Medicine } from '../../types';
+import { CheckCircle, Package, Search, Users, ShoppingCart, Plus, Save, Trash2, Stethoscope, BarChart3, ScanBarcode, X, Activity, Calculator, FileText, Phone, MapPin, Edit2, AlertOctagon, Receipt, Truck, BookOpen, BrainCircuit, CreditCard, Filter, Building2, Printer, RotateCcw, AlertTriangle, UserPlus, UserCheck, ArrowRight, User, Wallet, ArrowLeft, Keyboard, PauseCircle, PlayCircle, AlertCircle, Tag, RefreshCw, Calendar, Clock, ChevronRight, Shield, Key } from 'lucide-react';
+import { Prescription, User as UserType, InventoryItem, DoctorDirectoryEntry, Patient, Supplier, Customer, Sale, SaleItem, GRN, Expense, SalesReturn, Medicine, PatientAccount, UserRole, VerificationStatus } from '../../types';
 import { PrescriptionModal } from '../doctor/PrescriptionModal';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts';
+import { QRCodeSVG } from 'qrcode.react';
 import { dbService } from '../../services/db';
 import { getPharmacyAIInsights } from '../../services/geminiService';
 import { VirtualNumpad } from '../ui/VirtualNumpad';
@@ -136,6 +137,70 @@ const PrintableReceipt = ({ sale, user }: { sale: Sale, user: UserType }) => (
     </div>
 );
 
+const PrintableAccessSheet = ({ data, patientName }: { data: any, patientName: string }) => (
+    <div id="access-sheet" className="hidden print:block bg-white text-black font-sans p-8 w-full border-2 border-slate-200 rounded-xl">
+        <style dangerouslySetInnerHTML={{
+            __html: `
+            @media print {
+                body * { visibility: hidden; }
+                #access-sheet, #access-sheet * { visibility: visible; }
+                #access-sheet { position: absolute; left: 0; top: 0; width: 100%; height: auto; padding: 20px; }
+            }
+        `}} />
+        <div className="text-center border-b-2 pb-6 mb-8">
+            <h1 className="text-3xl font-bold text-indigo-900 mb-2">Patient Portal Access</h1>
+            <p className="text-slate-500">Secure Healthcare Ecosystem - e-Rx Hub</p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-12 mb-12">
+            <div>
+                <h3 className="text-sm font-bold text-slate-400 uppercase mb-4 tracking-wider">Patient Details</h3>
+                <div className="space-y-3">
+                    <p className="text-xl font-bold">{patientName}</p>
+                    <p className="text-slate-600">Patient ID: <span className="font-mono bg-slate-100 px-2 py-1 rounded">{data.patientId}</span></p>
+                </div>
+
+                <h3 className="text-sm font-bold text-slate-400 uppercase mt-10 mb-4 tracking-wider">Login Credentials</h3>
+                <div className="space-y-4 bg-slate-50 p-6 rounded-xl border border-slate-200">
+                    <div>
+                        <p className="text-xs font-bold text-slate-500">EMAIL ADDRESS</p>
+                        <p className="text-lg font-bold text-indigo-700">{data.email}</p>
+                    </div>
+                    <div>
+                        <p className="text-xs font-bold text-slate-500">TEMPORARY PASSWORD</p>
+                        <p className="text-lg font-bold text-indigo-700 font-mono tracking-widest">{data.password}</p>
+                    </div>
+                    <p className="text-[10px] text-red-500 font-bold mt-4 uppercase">*** Please change your password after logging in for the first time ***</p>
+                </div>
+            </div>
+
+            <div className="flex flex-col items-center justify-center border-l border-slate-200 pl-12">
+                <h3 className="text-sm font-bold text-slate-400 uppercase mb-6 tracking-wider">Scan to Login</h3>
+                <div className="p-4 bg-white border-2 border-slate-100 rounded-2xl shadow-sm mb-6">
+                    <QRCodeSVG value={window.location.origin} size={180} />
+                </div>
+                <p className="text-xs text-center text-slate-500 max-w-[200px]">Scan this QR code with your phone camera to open the portal</p>
+            </div>
+        </div>
+
+        <div className="bg-indigo-50 p-6 rounded-xl border border-indigo-100 mb-10">
+            <h4 className="font-bold text-indigo-900 mb-2 flex items-center">
+                <Shield className="w-4 h-4 mr-2" /> Security Guidelines
+            </h4>
+            <ul className="text-xs text-indigo-700 space-y-2 list-disc pl-4">
+                <li>Never share your credentials with anyone.</li>
+                <li>Verify your Doctor and Pharmacy roles before sharing medical data.</li>
+                <li>Logout immediately if using a public computer.</li>
+            </ul>
+        </div>
+
+        <div className="text-center text-[10px] text-slate-400 border-t pt-6">
+            <p>Access enabled by: <b>{data.pharmacyName}</b> on {new Date().toLocaleString()}</p>
+            <p className="mt-1">Generated by DevXWorld e-Rx Hub Security Engine</p>
+        </div>
+    </div>
+);
+
 const MedicineLabel = ({ data, pharmacyName }: { data: { patient: string, drug: string, dose: string, freq: string, instr: string }, pharmacyName: string }) => (
     <div id="med-label" className="hidden print:block bg-white text-black font-sans border-2 border-black p-2 w-[70mm] h-[40mm] overflow-hidden">
         <style dangerouslySetInnerHTML={{
@@ -169,7 +234,7 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
     const [view, setView] = useState<'DASHBOARD' | 'ERX' | 'POS' | 'INVENTORY' | 'LEDGER' | 'REPORTS' | 'AI' | 'PATIENTS'>('DASHBOARD');
     const [erxTab, setErxTab] = useState<'QUEUE' | 'HISTORY'>('QUEUE');
     const [selectedRx, setSelectedRx] = useState<Prescription | null>(null);
-    
+
     // Rx Processing State
     const [processingRx, setProcessingRx] = useState<Prescription | null>(null);
     const [matchMode, setMatchMode] = useState<'SEARCH' | 'CREATE'>('SEARCH');
@@ -189,6 +254,10 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
     const [newCustomerData, setNewCustomerData] = useState({ name: '', phone: '', address: '', email: '' });
     const [patientSearch, setPatientSearch] = useState('');
     const [viewingCustomer, setViewingCustomer] = useState<Customer | null>(null);
+    const [patientAccount, setPatientAccount] = useState<any | null>(null);
+    const [accessModal, setAccessModal] = useState<{ email: string, password: '', patientId: string, patientName: string } | null>(null);
+    const [grantingStatus, setGrantingStatus] = useState<'IDLE' | 'LOADING' | 'SUCCESS' | 'ERROR'>('IDLE');
+    const [printedAccess, setPrintedAccess] = useState<any | null>(null);
 
     useEffect(() => {
         // Load data on mount
@@ -204,6 +273,14 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
         load();
     }, [currentUser.id]);
 
+    useEffect(() => {
+        if (viewingCustomer) {
+            dbService.getPatientAccount(viewingCustomer.id).then(setPatientAccount);
+        } else {
+            setPatientAccount(null);
+        }
+    }, [viewingCustomer]);
+
     useEffect(() => { if (suppliers.length) dbService.saveSuppliers(suppliers); }, [suppliers]);
     useEffect(() => { if (customers.length) dbService.saveCustomers(customers); }, [customers]);
     useEffect(() => { if (sales.length) dbService.saveSales(sales); }, [sales]);
@@ -214,7 +291,7 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
     const myPrescriptions = prescriptions.filter(p => p.pharmacyId === currentUser.id);
     const queue = myPrescriptions.filter(p => p.status === 'SENT_TO_PHARMACY');
     const history = myPrescriptions.filter(p => p.status === 'DISPENSED' || p.status === 'REJECTED' || p.status === 'REJECTED_STOCK');
-    
+
     const lowStockItems = inventory.filter(i => i.stock <= i.minStockLevel);
     const expiredItems = inventory.filter(i => i.expiryDate && new Date(i.expiryDate) < new Date());
 
@@ -234,7 +311,7 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
 
         const newC: Customer = {
             id: newId,
-            pharmacyId: currentUser.id, 
+            pharmacyId: currentUser.id,
             name: newCustomerForm.name,
             phone: newCustomerForm.phone,
             address: newCustomerForm.address || '',
@@ -247,7 +324,7 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
     };
 
     const handleSaveCustomer = () => {
-        if(!newCustomerData.name || !newCustomerData.phone) {
+        if (!newCustomerData.name || !newCustomerData.phone) {
             alert("Name and Phone are required.");
             return;
         }
@@ -404,7 +481,7 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
     };
 
     const openQuickAdd = () => { setQuickAddItem({ name: posSearch || '', gstPercentage: 0, purchasePrice: 0 }); setShowQuickAdd(true); };
-    
+
     const handleQuickAddSubmit = async () => {
         if (!quickAddItem.name || !quickAddItem.batchNumber || !quickAddItem.mrp || !quickAddItem.stock) { alert("Fill required fields"); return; }
         const purchasePrice = quickAddItem.purchasePrice || (quickAddItem.mrp * 0.7);
@@ -425,7 +502,7 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
             gstPercentage: Number(quickAddItem.gstPercentage || 0),
             hsnCode: ''
         } as InventoryItem;
-        
+
         await dbService.saveInventoryItem(newItem);
         setInventory([newItem, ...inventory]);
         setShowQuickAdd(false); setQuickAddItem({}); setPosSearch(newItem.name);
@@ -535,9 +612,9 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
             (rx.patientName?.toLowerCase() === customer.name.toLowerCase())
         );
         // Sort by date desc
-        relatedRx.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        relatedRx.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         const latest = relatedRx[0];
-        
+
         return {
             age: latest?.patientAge,
             gender: latest?.patientGender,
@@ -546,7 +623,7 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
     };
 
     const getCustomerSales = (customer: Customer) => {
-        return sales.filter(s => s.customerId === customer.id).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        return sales.filter(s => s.customerId === customer.id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     };
 
     return (
@@ -556,9 +633,9 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
                 <div><h1 className="text-2xl font-bold text-slate-900 flex items-center"><Building2 className="mr-2 text-indigo-600" /> {currentUser.clinicName || 'Pharmacy ERP'}</h1><p className="text-slate-500 text-xs font-medium">License: {currentUser.licenseNumber}</p></div>
                 <div className="flex space-x-2"><span className="bg-green-100 text-green-800 text-xs px-3 py-1 rounded-full font-bold flex items-center"><Activity className="w-3 h-3 mr-1" /> Online</span><span className="bg-slate-100 text-slate-600 text-xs px-3 py-1 rounded-full font-bold">{new Date().toDateString()}</span></div>
             </div>
-            
+
             <div className="flex overflow-x-auto gap-2 mb-6 pb-2 w-full whitespace-nowrap -mx-4 px-4 sm:mx-0 sm:px-0">
-                {[ { id: 'DASHBOARD', label: 'Overview', icon: Activity }, { id: 'ERX', label: 'e-Prescriptions', icon: FileText }, { id: 'PATIENTS', label: 'Patients', icon: Users }, { id: 'POS', label: 'Billing / POS', icon: Calculator }, { id: 'INVENTORY', label: 'Stock & GRN', icon: Package }, { id: 'LEDGER', label: 'Ledger', icon: BookOpen }, { id: 'REPORTS', label: 'Reports', icon: BarChart3 }, { id: 'AI', label: 'AI Assistant', icon: BrainCircuit } ].map(tab => (
+                {[{ id: 'DASHBOARD', label: 'Overview', icon: Activity }, { id: 'ERX', label: 'e-Prescriptions', icon: FileText }, { id: 'PATIENTS', label: 'Patients', icon: Users }, { id: 'POS', label: 'Billing / POS', icon: Calculator }, { id: 'INVENTORY', label: 'Stock & GRN', icon: Package }, { id: 'LEDGER', label: 'Ledger', icon: BookOpen }, { id: 'REPORTS', label: 'Reports', icon: BarChart3 }, { id: 'AI', label: 'AI Assistant', icon: BrainCircuit }].map(tab => (
                     <button key={tab.id} onClick={() => { setView(tab.id as any); setViewingCustomer(null); }} className={`px-5 py-3 rounded-xl text-sm font-bold flex items-center whitespace-nowrap transition-all border shrink-0 ${view === tab.id ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-200' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-slate-300'}`}><tab.icon className="w-4 h-4 mr-2" /> {tab.label}</button>
                 ))}
             </div>
@@ -625,7 +702,7 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
                                         }, {})).map(([name, value]) => ({ name, value }))
                                     }>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                        <XAxis dataKey="name" tick={{fontSize: 10}} />
+                                        <XAxis dataKey="name" tick={{ fontSize: 10 }} />
                                         <YAxis />
                                         <Tooltip />
                                         <Bar dataKey="value" fill="#4f46e5" radius={[4, 4, 0, 0]} />
@@ -685,15 +762,15 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
                                         acc[item.name].rev += item.total;
                                         return acc;
                                     }, {}))
-                                    .sort((a: any, b: any) => b[1].rev - a[1].rev)
-                                    .slice(0, 10)
-                                    .map(([name, data]: any) => (
-                                        <tr key={name} className="hover:bg-slate-50">
-                                            <td className="px-6 py-3 font-medium text-slate-900">{name}</td>
-                                            <td className="px-6 py-3 text-right">{data.qty}</td>
-                                            <td className="px-6 py-3 text-right font-bold text-green-600">₹{data.rev.toFixed(2)}</td>
-                                        </tr>
-                                    ))}
+                                        .sort((a: any, b: any) => b[1].rev - a[1].rev)
+                                        .slice(0, 10)
+                                        .map(([name, data]: any) => (
+                                            <tr key={name} className="hover:bg-slate-50">
+                                                <td className="px-6 py-3 font-medium text-slate-900">{name}</td>
+                                                <td className="px-6 py-3 text-right">{data.qty}</td>
+                                                <td className="px-6 py-3 text-right font-bold text-green-600">₹{data.rev.toFixed(2)}</td>
+                                            </tr>
+                                        ))}
                                     {sales.length === 0 && (
                                         <tr><td colSpan={3} className="px-6 py-8 text-center text-slate-400">No sales data available.</td></tr>
                                     )}
@@ -712,18 +789,18 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
                             <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
                                 <div className="relative flex-1 w-full">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                    <input 
-                                        className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500" 
-                                        placeholder="Search Patients by Name or Phone..." 
+                                    <input
+                                        className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                                        placeholder="Search Patients by Name or Phone..."
                                         value={patientSearch}
                                         onChange={e => setPatientSearch(e.target.value)}
                                     />
                                 </div>
-                                <button 
-                                    onClick={() => setIsAddingCustomer(true)} 
+                                <button
+                                    onClick={() => setIsAddingCustomer(true)}
                                     className="bg-teal-600 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center shadow-sm hover:bg-teal-700 w-full sm:w-auto justify-center"
                                 >
-                                    <UserPlus className="w-4 h-4 mr-2"/> Add Patient
+                                    <UserPlus className="w-4 h-4 mr-2" /> Add Patient
                                 </button>
                             </div>
 
@@ -731,15 +808,15 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
                                 {customers.filter(c => c.name.toLowerCase().includes(patientSearch.toLowerCase()) || c.phone.includes(patientSearch)).map(customer => {
                                     const rxCount = myPrescriptions.filter(rx => rx.patientName?.toLowerCase() === customer.name.toLowerCase() || rx.patientPhone === customer.phone).length;
                                     return (
-                                        <div 
-                                            key={customer.id} 
+                                        <div
+                                            key={customer.id}
                                             onClick={() => setViewingCustomer(customer)}
                                             className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-400 transition-all group relative cursor-pointer"
                                         >
                                             <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <ChevronRight className="w-5 h-5 text-indigo-400"/>
+                                                <ChevronRight className="w-5 h-5 text-indigo-400" />
                                             </div>
-                                            
+
                                             <div className="flex items-start mb-3">
                                                 <div className="h-12 w-12 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold text-lg mr-3 border border-indigo-100">
                                                     {customer.name.charAt(0).toUpperCase()}
@@ -747,17 +824,17 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
                                                 <div>
                                                     <h3 className="font-bold text-slate-800 text-lg">{customer.name}</h3>
                                                     <p className="text-xs text-slate-500 flex items-center mt-1">
-                                                        <Phone className="w-3 h-3 mr-1"/> {customer.phone}
+                                                        <Phone className="w-3 h-3 mr-1" /> {customer.phone}
                                                     </p>
                                                 </div>
                                             </div>
-                                            
+
                                             {customer.address && (
                                                 <div className="text-xs text-slate-500 mb-3 flex items-start pl-1">
-                                                    <MapPin className="w-3 h-3 mr-1 mt-0.5 shrink-0"/> {customer.address}
+                                                    <MapPin className="w-3 h-3 mr-1 mt-0.5 shrink-0" /> {customer.address}
                                                 </div>
                                             )}
-                                            
+
                                             <div className="border-t border-slate-100 pt-3 mt-2 grid grid-cols-2 gap-4 text-sm">
                                                 <div>
                                                     <p className="text-[10px] uppercase font-bold text-slate-400">Total Visits</p>
@@ -772,9 +849,9 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
                                                     </p>
                                                 </div>
                                             </div>
-                                            
+
                                             <div className="mt-4 flex gap-2">
-                                                <button 
+                                                <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
                                                         setTransactionModal({
@@ -796,7 +873,7 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
                                 })}
                                 {customers.length === 0 && (
                                     <div className="col-span-full py-12 text-center text-slate-400 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50">
-                                        <Users className="w-12 h-12 mx-auto mb-3 opacity-50"/>
+                                        <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
                                         <p>No patients recorded yet.</p>
                                     </div>
                                 )}
@@ -805,11 +882,11 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
                     ) : (
                         // DETAILED CUSTOMER VIEW
                         <div className="animate-in fade-in slide-in-from-right duration-300">
-                            <button 
+                            <button
                                 onClick={() => setViewingCustomer(null)}
                                 className="flex items-center text-slate-500 hover:text-indigo-600 mb-4 font-medium text-sm transition-colors"
                             >
-                                <ArrowLeft className="w-4 h-4 mr-1"/> Back to Patient List
+                                <ArrowLeft className="w-4 h-4 mr-1" /> Back to Patient List
                             </button>
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -823,7 +900,7 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
                                             </div>
                                             <h2 className="text-xl font-bold text-slate-900">{viewingCustomer.name}</h2>
                                             <p className="text-slate-500 text-sm mt-1">{viewingCustomer.phone}</p>
-                                            
+
                                             {/* Derived Details from Rx History */}
                                             {(() => {
                                                 const { age, gender } = getCustomerDetailsFromRx(viewingCustomer);
@@ -850,6 +927,58 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
                                         </div>
                                     </div>
 
+                                    {/* App Access Section */}
+                                    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <h3 className="text-sm font-bold text-slate-500 uppercase">App Access</h3>
+                                            {patientAccount ? (
+                                                <span className="bg-green-100 text-green-700 text-[10px] px-2 py-0.5 rounded-full font-bold">Enabled</span>
+                                            ) : (
+                                                <span className="bg-slate-100 text-slate-400 text-[10px] px-2 py-0.5 rounded-full font-bold">Inactive</span>
+                                            )}
+                                        </div>
+
+                                        {patientAccount ? (
+                                            <div className="space-y-3">
+                                                <button
+                                                    disabled
+                                                    className="w-full bg-slate-100 text-slate-400 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center cursor-not-allowed border border-slate-200"
+                                                >
+                                                    <CheckCircle className="w-4 h-4 mr-2" /> App Access Enabled
+                                                </button>
+
+                                                <button
+                                                    onClick={() => {
+                                                        const pAccount = {
+                                                            email: patientAccount.email || viewingCustomer.email || '',
+                                                            password: '••••••••',
+                                                            patientId: viewingCustomer.id,
+                                                            pharmacyName: currentUser.clinicName || 'The Pharmacy'
+                                                        };
+                                                        setPrintedAccess(pAccount);
+                                                        setTimeout(() => window.print(), 200);
+                                                    }}
+                                                    className="w-full bg-white text-indigo-600 border border-indigo-200 py-2 rounded-lg text-xs font-bold hover:bg-slate-50 flex items-center justify-center"
+                                                >
+                                                    <Printer className="w-3 h-3 mr-2" /> Print Access Recovery Sheet
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <button
+                                                onClick={() => setAccessModal({
+                                                    email: viewingCustomer.email || '',
+                                                    password: '',
+                                                    patientId: viewingCustomer.id,
+                                                    patientName: viewingCustomer.name
+                                                })}
+                                                className="w-full bg-teal-600 text-white py-2.5 rounded-lg text-sm font-bold hover:bg-teal-700 shadow-sm flex items-center justify-center group transition-all"
+                                            >
+                                                <Shield className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" /> Enable App Access
+                                            </button>
+                                        )}
+                                        <p className="text-[10px] text-slate-400 mt-4 text-center">Patients can view their prescriptions and receipts via the portal</p>
+                                    </div>
+
                                     <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                                         <h3 className="text-sm font-bold text-slate-500 uppercase mb-4">Financial Status</h3>
                                         <div className="flex justify-between items-end mb-4">
@@ -858,7 +987,7 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
                                                 ₹{viewingCustomer.balance.toFixed(2)}
                                             </span>
                                         </div>
-                                        <button 
+                                        <button
                                             onClick={() => setTransactionModal({
                                                 type: 'CUSTOMER',
                                                 id: viewingCustomer.id,
@@ -880,7 +1009,7 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
                                     <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                                         <div className="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
                                             <h3 className="font-bold text-slate-800 flex items-center">
-                                                <FileText className="w-4 h-4 mr-2 text-indigo-600"/> Prescription History
+                                                <FileText className="w-4 h-4 mr-2 text-indigo-600" /> Prescription History
                                             </h3>
                                             <span className="text-xs font-medium text-slate-500">
                                                 {getCustomerDetailsFromRx(viewingCustomer).history.length} Records
@@ -912,7 +1041,7 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
                                                                     {rx.diagnosis}
                                                                 </td>
                                                                 <td className="px-4 py-3 text-right">
-                                                                    <button 
+                                                                    <button
                                                                         onClick={() => setSelectedRx(rx)}
                                                                         className="text-xs text-indigo-600 hover:text-indigo-800 font-bold border border-indigo-200 px-2 py-1 rounded hover:bg-indigo-50"
                                                                     >
@@ -931,7 +1060,7 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
                                     <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                                         <div className="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
                                             <h3 className="font-bold text-slate-800 flex items-center">
-                                                <Receipt className="w-4 h-4 mr-2 text-green-600"/> Billing History
+                                                <Receipt className="w-4 h-4 mr-2 text-green-600" /> Billing History
                                             </h3>
                                             <span className="text-xs font-medium text-slate-500">
                                                 {getCustomerSales(viewingCustomer).length} Invoices
@@ -967,7 +1096,7 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
                                                                     ₹{sale.roundedTotal}
                                                                 </td>
                                                                 <td className="px-4 py-3 text-right">
-                                                                    <button 
+                                                                    <button
                                                                         onClick={() => setShowReceipt(sale)}
                                                                         className="text-xs text-green-600 hover:text-green-800 font-bold border border-green-200 px-2 py-1 rounded hover:bg-green-50"
                                                                     >
@@ -998,7 +1127,7 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
                         </div>
                         <div className="flex-1 overflow-y-auto p-4 space-y-3">
                             {(erxTab === 'QUEUE' ? queue : history).map(rx => (
-                                <div key={rx.id} onClick={() => { if(erxTab === 'QUEUE') handleStartProcessing(rx); else setSelectedRx(rx); }} className={`p-4 rounded-xl border cursor-pointer transition-all hover:shadow-md ${rx.status === 'SENT_TO_PHARMACY' ? 'bg-white border-slate-200 hover:border-indigo-300' : 'bg-slate-50 border-slate-200 opacity-75 hover:opacity-100'}`}>
+                                <div key={rx.id} onClick={() => { if (erxTab === 'QUEUE') handleStartProcessing(rx); else setSelectedRx(rx); }} className={`p-4 rounded-xl border cursor-pointer transition-all hover:shadow-md ${rx.status === 'SENT_TO_PHARMACY' ? 'bg-white border-slate-200 hover:border-indigo-300' : 'bg-slate-50 border-slate-200 opacity-75 hover:opacity-100'}`}>
                                     <div className="flex justify-between items-start mb-2">
                                         <h4 className="font-bold text-slate-800">{rx.patientName}</h4>
                                         <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-1 rounded">{rx.id}</span>
@@ -1012,7 +1141,7 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
                             ))}
                             {(erxTab === 'QUEUE' ? queue : history).length === 0 && (
                                 <div className="text-center py-10 text-slate-400">
-                                    <FileText className="w-12 h-12 mx-auto mb-2 opacity-20"/>
+                                    <FileText className="w-12 h-12 mx-auto mb-2 opacity-20" />
                                     <p className="text-sm">No prescriptions found.</p>
                                 </div>
                             )}
@@ -1020,7 +1149,7 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
                     </div>
                     <div className="col-span-1 lg:col-span-8 bg-slate-50 rounded-xl border-2 border-dashed border-slate-300 flex items-center justify-center h-[500px] lg:h-full">
                         <div className="text-center text-slate-400">
-                            <Stethoscope className="w-16 h-16 mx-auto mb-4 opacity-20"/>
+                            <Stethoscope className="w-16 h-16 mx-auto mb-4 opacity-20" />
                             <p className="text-lg font-bold">Select a Prescription</p>
                             <p className="text-sm">Choose from the queue to process or history to view.</p>
                         </div>
@@ -1037,7 +1166,7 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
                             <div className="flex gap-2"><button onClick={openQuickAdd} className="w-full sm:w-auto bg-teal-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-teal-700 flex items-center justify-center whitespace-nowrap"><Plus className="w-4 h-4 mr-1" /> Quick Add</button><button onClick={() => setShowHeldBills(true)} className="bg-orange-100 text-orange-700 px-4 py-2 rounded-lg font-bold text-sm hover:bg-orange-200 flex items-center border border-orange-200 relative"><PauseCircle className="w-4 h-4 mr-1" /> Recall {heldBills.length > 0 && <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center">{heldBills.length}</span>}</button></div>
                         </div>
                         <div className="flex-1 overflow-y-auto p-4">
-                            <div className="overflow-x-auto"><table className="w-full text-sm text-left"><thead className="text-xs text-slate-500 uppercase bg-slate-50 sticky top-0 z-10"><tr><th className="px-4 py-3">Item Name</th><th className="px-4 py-3">Batch</th><th className="px-4 py-3">Expiry</th><th className="px-4 py-3 text-right">Stock</th><th className="px-4 py-3 text-right">MRP</th><th className="px-4 py-3 text-center">Action</th></tr></thead><tbody className="divide-y divide-slate-100">{inventory.filter(i => {const s = posSearch.toLowerCase(); return (i.name.toLowerCase().includes(s) || (i.genericName || '').toLowerCase().includes(s) || (i.barcode || '').includes(s)) && i.stock > 0;}).map(item => (<tr key={item.id} className="hover:bg-indigo-50 transition-colors"><td className="px-4 py-3"><div className="font-medium text-slate-900">{item.name}</div>{item.genericName && <div className="text-xs text-slate-500 italic">{item.genericName}</div>}</td><td className="px-4 py-3 font-mono text-slate-600 text-xs">{item.batchNumber}</td><td className={`px-4 py-3 text-xs font-bold ${item.expiryDate && new Date(item.expiryDate) < new Date() ? 'text-red-600' : 'text-green-600'}`}>{item.expiryDate || 'N/A'}</td><td className="px-4 py-3 text-right">{item.stock}</td><td className="px-4 py-3 text-right">₹{item.mrp}</td><td className="px-4 py-3 text-center"><button onClick={() => addToCart(item)} className="bg-indigo-600 text-white px-3 py-1 rounded text-xs font-bold hover:bg-indigo-700">Add +</button></td></tr>))}</tbody></table></div>
+                            <div className="overflow-x-auto"><table className="w-full text-sm text-left"><thead className="text-xs text-slate-500 uppercase bg-slate-50 sticky top-0 z-10"><tr><th className="px-4 py-3">Item Name</th><th className="px-4 py-3">Batch</th><th className="px-4 py-3">Expiry</th><th className="px-4 py-3 text-right">Stock</th><th className="px-4 py-3 text-right">MRP</th><th className="px-4 py-3 text-center">Action</th></tr></thead><tbody className="divide-y divide-slate-100">{inventory.filter(i => { const s = posSearch.toLowerCase(); return (i.name.toLowerCase().includes(s) || (i.genericName || '').toLowerCase().includes(s) || (i.barcode || '').includes(s)) && i.stock > 0; }).map(item => (<tr key={item.id} className="hover:bg-indigo-50 transition-colors"><td className="px-4 py-3"><div className="font-medium text-slate-900">{item.name}</div>{item.genericName && <div className="text-xs text-slate-500 italic">{item.genericName}</div>}</td><td className="px-4 py-3 font-mono text-slate-600 text-xs">{item.batchNumber}</td><td className={`px-4 py-3 text-xs font-bold ${item.expiryDate && new Date(item.expiryDate) < new Date() ? 'text-red-600' : 'text-green-600'}`}>{item.expiryDate || 'N/A'}</td><td className="px-4 py-3 text-right">{item.stock}</td><td className="px-4 py-3 text-right">₹{item.mrp}</td><td className="px-4 py-3 text-center"><button onClick={() => addToCart(item)} className="bg-indigo-600 text-white px-3 py-1 rounded text-xs font-bold hover:bg-indigo-700">Add +</button></td></tr>))}</tbody></table></div>
                         </div>
                     </div>
                     <div className="col-span-1 lg:col-span-4 bg-white rounded-xl shadow-lg border border-slate-200 flex flex-col h-auto lg:h-full min-h-[500px]">
@@ -1086,7 +1215,7 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
                     <div className="flex justify-between items-center mb-6">
                         <h3 className="font-bold text-slate-800 flex items-center"><Package className="mr-2 w-5 h-5" /> Current Stock</h3>
                         <button onClick={openQuickAdd} className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center hover:bg-indigo-700">
-                            <Plus className="w-4 h-4 mr-2"/> Add Item
+                            <Plus className="w-4 h-4 mr-2" /> Add Item
                         </button>
                     </div>
                     <div className="overflow-x-auto">
@@ -1110,11 +1239,11 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
                                         <td className="px-4 py-3 text-right font-bold">{item.stock}</td>
                                         <td className="px-4 py-3 text-right">₹{item.mrp}</td>
                                         <td className="px-4 py-3 text-right">
-                                            <button 
+                                            <button
                                                 onClick={() => {
                                                     const qty = prompt(`Write off quantity for ${item.name}?`);
-                                                    if(qty) handleWriteOff(item, parseInt(qty), 'Damaged/Expired');
-                                                }} 
+                                                    if (qty) handleWriteOff(item, parseInt(qty), 'Damaged/Expired');
+                                                }}
                                                 className="text-red-500 hover:text-red-700 text-xs font-bold"
                                             >
                                                 Write Off
@@ -1135,15 +1264,15 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
                     <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-6 rounded-xl shadow-lg mb-6">
                         <div className="flex justify-between items-center">
                             <div>
-                                <h2 className="text-2xl font-bold flex items-center"><BrainCircuit className="w-8 h-8 mr-3"/> Pharmacy AI Assistant</h2>
+                                <h2 className="text-2xl font-bold flex items-center"><BrainCircuit className="w-8 h-8 mr-3" /> Pharmacy AI Assistant</h2>
                                 <p className="text-indigo-100 mt-1">Smart insights on inventory, pricing, and sales trends.</p>
                             </div>
-                            <button 
+                            <button
                                 onClick={fetchInsights}
                                 disabled={loadingAi}
                                 className="bg-white text-indigo-600 px-6 py-3 rounded-lg font-bold shadow hover:bg-indigo-50 disabled:opacity-70 flex items-center"
                             >
-                                {loadingAi ? <RefreshCw className="w-5 h-5 animate-spin mr-2"/> : <PlayCircle className="w-5 h-5 mr-2"/>}
+                                {loadingAi ? <RefreshCw className="w-5 h-5 animate-spin mr-2" /> : <PlayCircle className="w-5 h-5 mr-2" />}
                                 Analyze Data
                             </button>
                         </div>
@@ -1152,7 +1281,7 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
                     {aiInsights && (
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                                <h3 className="font-bold text-slate-800 mb-4 flex items-center"><AlertTriangle className="w-5 h-5 mr-2 text-amber-500"/> Reorder Suggestions</h3>
+                                <h3 className="font-bold text-slate-800 mb-4 flex items-center"><AlertTriangle className="w-5 h-5 mr-2 text-amber-500" /> Reorder Suggestions</h3>
                                 <ul className="space-y-3">
                                     {aiInsights.reorderSuggestions.map((s, i) => (
                                         <li key={i} className="text-sm bg-amber-50 p-3 rounded border border-amber-100">
@@ -1163,7 +1292,7 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
                                 </ul>
                             </div>
                             <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                                <h3 className="font-bold text-slate-800 mb-4 flex items-center"><Tag className="w-5 h-5 mr-2 text-green-500"/> Pricing Strategies</h3>
+                                <h3 className="font-bold text-slate-800 mb-4 flex items-center"><Tag className="w-5 h-5 mr-2 text-green-500" /> Pricing Strategies</h3>
                                 <ul className="space-y-3">
                                     {aiInsights.pricingTips.map((s, i) => (
                                         <li key={i} className="text-sm bg-green-50 p-3 rounded border border-green-100">
@@ -1174,7 +1303,7 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
                                 </ul>
                             </div>
                             <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                                <h3 className="font-bold text-slate-800 mb-4 flex items-center"><AlertCircle className="w-5 h-5 mr-2 text-red-500"/> Anomalies Detected</h3>
+                                <h3 className="font-bold text-slate-800 mb-4 flex items-center"><AlertCircle className="w-5 h-5 mr-2 text-red-500" /> Anomalies Detected</h3>
                                 {aiInsights.anomalies.length > 0 ? (
                                     <ul className="space-y-2">
                                         {aiInsights.anomalies.map((a, i) => <li key={i} className="text-sm text-red-600">• {a}</li>)}
@@ -1208,7 +1337,7 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
             )}
 
             {showReceipt && <div className="fixed inset-0 bg-slate-900/60 z-[200] flex items-center justify-center p-4"><div className="bg-white rounded-lg shadow-xl w-full max-w-sm overflow-hidden"><div className="bg-green-600 p-4 text-center text-white"><CheckCircle className="w-12 h-12 mx-auto mb-2" /><h3 className="text-lg font-bold">Payment Successful</h3><p className="text-sm">Invoice #{showReceipt.invoiceNumber}</p></div><div className="p-6 text-center space-y-4"><p className="text-sm text-slate-600">Bill Total: <span className="font-bold text-slate-900 text-lg">₹{showReceipt.roundedTotal}</span></p>{showReceipt.amountPaid !== undefined && (<div className="grid grid-cols-2 gap-2 text-sm bg-slate-50 p-2 rounded"><div>Paid: <span className="font-bold">₹{showReceipt.amountPaid}</span></div><div>Due: <span className="font-bold text-red-600">₹{showReceipt.balanceDue || 0}</span></div></div>)}<PrintableReceipt sale={showReceipt} user={currentUser} /><div className="flex gap-3 justify-center"><button onClick={() => window.print()} className="flex items-center bg-indigo-600 text-white px-4 py-2 rounded font-bold hover:bg-indigo-700"><Printer className="w-4 h-4 mr-2" /> Print Receipt / Save PDF</button><button onClick={() => setShowReceipt(null)} className="flex items-center border border-slate-300 text-slate-700 px-4 py-2 rounded font-bold hover:bg-slate-50">Close</button></div></div></div></div>}
-            
+
             {processingRx && (
                 <div className="fixed inset-0 bg-slate-900/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
@@ -1244,50 +1373,50 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 animate-in zoom-in-95">
                         <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-2">
                             <h3 className="font-bold text-lg text-slate-800 flex items-center">
-                                <UserPlus className="w-5 h-5 mr-2 text-teal-600"/> Add Patient
+                                <UserPlus className="w-5 h-5 mr-2 text-teal-600" /> Add Patient
                             </h3>
-                            <button onClick={() => setIsAddingCustomer(false)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5"/></button>
+                            <button onClick={() => setIsAddingCustomer(false)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
                         </div>
                         <div className="space-y-4">
                             <div>
                                 <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Full Name *</label>
-                                <input 
-                                    className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-teal-500 outline-none" 
+                                <input
+                                    className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-teal-500 outline-none"
                                     placeholder="Patient Name"
                                     value={newCustomerData.name}
-                                    onChange={e => setNewCustomerData({...newCustomerData, name: e.target.value})}
+                                    onChange={e => setNewCustomerData({ ...newCustomerData, name: e.target.value })}
                                     autoFocus
                                 />
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Phone Number *</label>
-                                <input 
-                                    className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-teal-500 outline-none" 
+                                <input
+                                    className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-teal-500 outline-none"
                                     placeholder="Mobile Number"
                                     value={newCustomerData.phone}
-                                    onChange={e => setNewCustomerData({...newCustomerData, phone: e.target.value})}
+                                    onChange={e => setNewCustomerData({ ...newCustomerData, phone: e.target.value })}
                                 />
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Email (Optional)</label>
-                                <input 
-                                    className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-teal-500 outline-none" 
+                                <input
+                                    className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-teal-500 outline-none"
                                     placeholder="Email Address"
                                     value={newCustomerData.email}
-                                    onChange={e => setNewCustomerData({...newCustomerData, email: e.target.value})}
+                                    onChange={e => setNewCustomerData({ ...newCustomerData, email: e.target.value })}
                                 />
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Address (Optional)</label>
-                                <textarea 
-                                    className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-teal-500 outline-none" 
+                                <textarea
+                                    className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-teal-500 outline-none"
                                     placeholder="Street Address"
                                     rows={2}
                                     value={newCustomerData.address}
-                                    onChange={e => setNewCustomerData({...newCustomerData, address: e.target.value})}
+                                    onChange={e => setNewCustomerData({ ...newCustomerData, address: e.target.value })}
                                 />
                             </div>
-                            <button 
+                            <button
                                 onClick={handleSaveCustomer}
                                 className="w-full bg-teal-600 text-white py-2 rounded font-bold hover:bg-teal-700 shadow-sm mt-2"
                             >
@@ -1304,12 +1433,12 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden">
                         <div className="p-4 bg-indigo-900 text-white flex justify-between items-center">
                             <h3 className="font-bold">Update Ledger</h3>
-                            <button onClick={() => setTransactionModal(null)}><X className="w-5 h-5"/></button>
+                            <button onClick={() => setTransactionModal(null)}><X className="w-5 h-5" /></button>
                         </div>
                         <div className="p-6">
                             <p className="text-sm text-slate-500 mb-1">{transactionModal.type === 'SUPPLIER' ? 'Supplier' : 'Customer'}</p>
                             <h2 className="text-xl font-bold text-slate-800 mb-4">{transactionModal.name}</h2>
-                            
+
                             <div className="bg-slate-50 p-3 rounded border border-slate-200 mb-4 flex justify-between items-center">
                                 <span className="text-xs font-bold text-slate-500 uppercase">Current Balance</span>
                                 <span className={`font-bold ${transactionModal.currentBalance > 0 ? 'text-red-600' : 'text-green-600'}`}>
@@ -1321,14 +1450,14 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
                                 <div>
                                     <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Action</label>
                                     <div className="grid grid-cols-2 gap-2">
-                                        <button 
-                                            onClick={() => setTransactionModal({...transactionModal, mode: transactionModal.type === 'SUPPLIER' ? 'PAYMENT_MADE' : 'PAYMENT_RECEIVED'})}
+                                        <button
+                                            onClick={() => setTransactionModal({ ...transactionModal, mode: transactionModal.type === 'SUPPLIER' ? 'PAYMENT_MADE' : 'PAYMENT_RECEIVED' })}
                                             className={`py-2 text-xs font-bold rounded border ${transactionModal.mode === 'PAYMENT_MADE' || transactionModal.mode === 'PAYMENT_RECEIVED' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-white text-slate-600'}`}
                                         >
                                             {transactionModal.type === 'SUPPLIER' ? 'Payment Made' : 'Payment Received'}
                                         </button>
-                                        <button 
-                                            onClick={() => setTransactionModal({...transactionModal, mode: transactionModal.type === 'SUPPLIER' ? 'ADD_CHARGE' : 'ADD_CHARGE'})} // Map customer debit logic if needed
+                                        <button
+                                            onClick={() => setTransactionModal({ ...transactionModal, mode: transactionModal.type === 'SUPPLIER' ? 'ADD_CHARGE' : 'ADD_CHARGE' })} // Map customer debit logic if needed
                                             className={`py-2 text-xs font-bold rounded border ${transactionModal.mode === 'ADD_CHARGE' ? 'bg-red-100 text-red-700 border-red-200' : 'bg-white text-slate-600'}`}
                                         >
                                             {transactionModal.type === 'SUPPLIER' ? 'Add Credit' : 'Debit Account'}
@@ -1337,16 +1466,16 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Amount</label>
-                                    <input 
-                                        type="number" 
+                                    <input
+                                        type="number"
                                         className="w-full border-2 border-slate-300 rounded p-2 text-lg font-bold text-slate-900 focus:border-indigo-600 outline-none"
                                         placeholder="0.00"
                                         value={transactionModal.amount}
-                                        onChange={e => setTransactionModal({...transactionModal, amount: e.target.value})}
+                                        onChange={e => setTransactionModal({ ...transactionModal, amount: e.target.value })}
                                         autoFocus
                                     />
                                 </div>
-                                <button 
+                                <button
                                     onClick={handleTransactionSubmit}
                                     className="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold hover:bg-indigo-700 shadow-md"
                                 >
@@ -1356,6 +1485,119 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Enable App Access Modal */}
+            {accessModal && (
+                <div className="fixed inset-0 bg-slate-900/80 z-[200] flex items-center justify-center p-4 backdrop-blur-md">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95">
+                        <div className="p-6 bg-indigo-900 text-white flex justify-between items-center">
+                            <h3 className="font-bold text-lg flex items-center">
+                                <Shield className="w-5 h-5 mr-3 text-indigo-300" /> Enable Patient Access
+                            </h3>
+                            <button onClick={() => { setAccessModal(null); setGrantingStatus('IDLE'); }}><X className="w-6 h-6 hover:text-red-400 transition-colors" /></button>
+                        </div>
+
+                        <div className="p-8">
+                            <div className="text-center mb-8">
+                                <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-indigo-100">
+                                    <Key className="w-10 h-10 text-indigo-600" />
+                                </div>
+                                <h4 className="font-bold text-lg text-slate-900">Patient Credentials</h4>
+                                <p className="text-slate-500 text-sm">Create a login account for {accessModal.patientName}</p>
+                            </div>
+
+                            <div className="space-y-5">
+                                <div>
+                                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-wider">Login Email</label>
+                                    <div className="relative">
+                                        <input
+                                            className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium"
+                                            placeholder="patient@example.com"
+                                            value={accessModal.email}
+                                            onChange={e => setAccessModal({ ...accessModal, email: e.target.value })}
+                                        />
+                                        <Users className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-400" />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-wider">Temporary Password</label>
+                                    <div className="relative">
+                                        <input
+                                            className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-mono font-bold"
+                                            placeholder="Enter strong password"
+                                            type="text"
+                                            value={accessModal.password}
+                                            onChange={e => setAccessModal({ ...accessModal, password: e.target.value as any })}
+                                        />
+                                        <Key className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-400" />
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 mt-2">Recommended: 8+ chars with numbers</p>
+                                </div>
+
+                                {grantingStatus === 'ERROR' && (
+                                    <div className="p-3 bg-red-50 border border-red-100 rounded-lg flex items-center text-xs text-red-600">
+                                        <AlertCircle className="w-4 h-4 mr-2" /> Could not enable access. Check email or connection.
+                                    </div>
+                                )}
+
+                                <button
+                                    onClick={async () => {
+                                        if (!accessModal.email || !accessModal.password) {
+                                            alert("Email and Password are required."); return;
+                                        }
+                                        setGrantingStatus('LOADING');
+                                        try {
+                                            await dbService.grantPatientAccess(
+                                                accessModal.patientId,
+                                                accessModal.patientName,
+                                                accessModal.email,
+                                                accessModal.password,
+                                                currentUser.id
+                                            );
+                                            setGrantingStatus('SUCCESS');
+
+                                            const pData = {
+                                                email: accessModal.email,
+                                                password: accessModal.password,
+                                                patientId: accessModal.patientId,
+                                                pharmacyName: currentUser.clinicName || 'The Pharmacy'
+                                            };
+                                            setPrintedAccess(pData);
+
+                                            // Sync local state
+                                            const updated = await dbService.getPatientAccount(accessModal.patientId);
+                                            setPatientAccount(updated);
+
+                                            // Log Action
+                                            dbService.logSecurityAction(currentUser.id, 'PATIENT_ACCESS_GRANTED', `Enabled portal access for patient: ${accessModal.patientName} (${accessModal.patientId})`);
+
+                                            setTimeout(() => {
+                                                window.print();
+                                                setAccessModal(null);
+                                                setGrantingStatus('IDLE');
+                                            }, 500);
+                                        } catch (e: any) {
+                                            console.error(e);
+                                            setGrantingStatus('ERROR');
+                                            dbService.logSecurityAction(currentUser.id, 'PATIENT_ACCESS_GRANT_FAILED', `Error: ${e.message || 'Unknown'} for Patient ID: ${accessModal.patientId}`);
+                                        }
+                                    }}
+                                    disabled={grantingStatus === 'LOADING'}
+                                    className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold shadow-xl shadow-indigo-200 hover:bg-indigo-700 transition-all transform hover:-translate-y-1 active:translate-y-0 disabled:opacity-50 flex justify-center items-center"
+                                >
+                                    {grantingStatus === 'LOADING' ? <RefreshCw className="w-5 h-5 animate-spin mr-2" /> : <CheckCircle className="w-5 h-5 mr-2" />}
+                                    Confirm & Create Account
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {printedAccess && (
+                <PrintableAccessSheet data={printedAccess} patientName={viewingCustomer?.name || 'Authorized Patient'} />
             )}
         </div>
     );

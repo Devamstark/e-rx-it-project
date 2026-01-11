@@ -1,7 +1,7 @@
 {
-  "name": "copy-of-1.5-copy-changing-e-rx-hub-current",
+  "name": "devxworld-erx-hub",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
