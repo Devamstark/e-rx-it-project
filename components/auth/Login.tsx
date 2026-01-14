@@ -652,9 +652,17 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
                     </form>
                 )}
             </div>
-            <div className="px-8 py-4 bg-slate-50 border-t border-slate-200 text-xs text-slate-500 text-center flex justify-between items-center">
-                <span>Compliance: DPDP Act 2023 & Telemedicine Guidelines.</span>
-                <span className="flex items-center gap-1 text-slate-400" title="Auth fallback active"><WifiOff className="w-3 h-3" /> Database Only Mode</span>
+            <div className="px-8 py-4 bg-slate-50 border-t border-slate-200 text-xs text-slate-500 text-center flex flex-col gap-1">
+                <div className="flex justify-between items-center w-full">
+                    <span>Compliance: DPDP Act 2023 & Telemedicine Guidelines.</span>
+                    <span className={`flex items-center gap-1 font-bold ${dbService.isCloudEnabled() ? 'text-green-600' : 'text-red-600'}`} title="Connection Status">
+                        {dbService.isCloudEnabled() ? <Building2 className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
+                        {dbService.isCloudEnabled() ? 'Cloud Connected' : 'Disconnected'}
+                    </span>
+                </div>
+                <div className="text-[10px] text-slate-300 font-mono mt-2">
+                    URL: {import.meta.env.VITE_SUPABASE_URL ? 'Set' : 'Missing'} | Key: {import.meta.env.VITE_SUPABASE_ANON_KEY ? 'Set' : 'Missing'}
+                </div>
             </div>
         </div>
     );
