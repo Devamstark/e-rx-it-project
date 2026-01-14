@@ -6,14 +6,18 @@ import { Prescription, User, InventoryItem, Supplier, Customer, Sale, SalesRetur
 const INITIAL_USERS: User[] = [];
 
 const getEnv = (key: string) => {
+    let val = undefined;
     try {
         const meta = import.meta as any;
-        if (meta && meta.env && meta.env[key]) return meta.env[key];
+        if (meta && meta.env && meta.env[key]) val = meta.env[key];
     } catch (e) { }
     try {
-        if (typeof process !== 'undefined' && process.env && process.env[key]) return process.env[key];
+        if (typeof process !== 'undefined' && process.env && process.env[key]) val = process.env[key];
     } catch (e) { }
-    return undefined;
+
+    // Debug Log (Remove in production if too noisy, but critical for now)
+    console.log(`[EnvCheck] ${key}:`, val ? 'Found' : 'Missing');
+    return val;
 };
 
 
