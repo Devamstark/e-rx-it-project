@@ -366,12 +366,8 @@ function App() {
     };
 
     const handleLogin = async (user: User) => {
-        // 1. Authenticate Supabase client for RLS (CRITICAL - must happen before redirection)
-        if (user.email && user.password) {
-            await dbService.login(user.email, user.password);
-        }
-
-        // 2. Immediate UI Transition
+        // 1. Immediate UI Transition
+        // The user is already authenticated by the Login component
         setCurrentUser(user);
         localStorage.setItem('devx_active_session_id', user.id);
         lastActivityRef.current = Date.now();

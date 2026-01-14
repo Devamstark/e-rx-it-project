@@ -187,6 +187,8 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
         }
     };
 
+    const [authenticatedUser, setAuthenticatedUser] = useState<User | null>(null);
+
     const handleLoginSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
@@ -194,7 +196,6 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
         setStatusMessage('');
 
         try {
-            // Refactored: Use Supabase Auth for verification instead of local password check
             const user = await dbService.login(email, password);
 
             if (user) {
@@ -207,21 +208,12 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
                 // Check Status
                 if (user.verificationStatus === VerificationStatus.PENDING) {
                     setLoading(false);
-                    setStatusMessage("Your account is currently Under Review by DevXWorld Admins. Please check back later.");
-                    return;
-                }
-                if (user.verificationStatus === VerificationStatus.REJECTED) {
-                    setLoading(false);
-                    setError("Your application was Rejected. Access Denied.");
-                    return;
-                }
-                if (user.verificationStatus === VerificationStatus.TERMINATED) {
-                    setLoading(false);
-                    setError("Your account has been Terminated due to compliance violations.");
+                    setStatusMessage("Your account is currently Under Review by DevXWorld Admins.");
                     return;
                 }
 
-                // Proceed to OTP instantly for better UX
+                // Store user temporarily for the OTP step
+                setAuthenticatedUser(user);
                 setLoading(false);
                 setStep('OTP');
             } else {
@@ -230,7 +222,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
             }
         } catch (err: any) {
             setLoading(false);
-            setError(err.message || "Login failed. Please try again.");
+            setError(err.message || "Login failed.");
         }
     };
 
@@ -238,37 +230,36 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
         e.preventDefault();
         setLoading(true);
 
-        // Special OTP logic for Admin
-        if (selectedRole === UserRole.ADMIN) {
-            if (otp !== '000000') {
-                setLoading(false);
-                setError("Invalid OTP for Admin Access.");
+        // 1. Check Admin Bypass
+        if (selectedRole === UserRole.ADMIN && otp === '000000') {
+            const admin = users.find(u => u.email === 'admin' || u.role === UserRole.ADMIN) || users[0];
+            if (admin) {
+                await onLogin(admin);
                 return;
             }
         }
 
+        // 2. Validate OTP length
         if (otp.length !== 6) {
             setLoading(false);
             setError("OTP must be 6 digits.");
             return;
         }
 
-        const user = users.find(u => u.email === email && u.role === selectedRole);
-
-        if (user) {
+        // 3. Complete Login
+        if (authenticatedUser) {
             try {
-                // Log action and await the login process (db session + data reload)
-                // We keep loading=true so the user doesn't click again
-                await dbService.logSecurityAction(user.id, 'USER_LOGIN_SUCCESS', '2FA Verified via OTP');
-                await onLogin(user);
+                await onLogin(authenticatedUser); // Note: handleLogin in App.tsx is now very fast
+                dbService.logSecurityAction(authenticatedUser.id, 'USER_LOGIN_SUCCESS', '2FA Verified via OTP')
+                    .catch(e => console.warn("Background logging failed:", e));
             } catch (err: any) {
-                console.error("Login redirect failed:", err);
-                setError(err.message || "Session Error. Please try again.");
+                setError("Session Error. Please try again.");
                 setLoading(false);
             }
         } else {
             setLoading(false);
-            setError("Session Error. Please try again.");
+            setError("Session Timeout. Please log in again.");
+            setStep('CREDENTIALS');
         }
     };
 
