@@ -196,7 +196,9 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
         setStatusMessage('');
 
         try {
-            const user = await dbService.login(email, password);
+            // ADMIN SHORTCUT: Detect "admin" and map to real email
+            const targetEmail = email.trim() === 'admin' ? 'admin@devx.local' : email;
+            const user = await dbService.login(targetEmail, password);
 
             if (user) {
                 if (user.role !== selectedRole) {
