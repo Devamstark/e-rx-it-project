@@ -389,5 +389,11 @@ export const dbService = {
         this.checkCloud();
         const rows = data.map(e => ({ id: e.id, pharmacy_id: e.pharmacyId, category: e.category, amount: e.amount, data: e }));
         await supabase!.from('expenses').upsert(rows);
+    },
+
+    async syncRegistry() {
+        this.checkCloud();
+        const { error } = await supabase!.rpc('sync_users');
+        if (error) throw error;
     }
 };

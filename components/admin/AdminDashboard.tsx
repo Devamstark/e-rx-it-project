@@ -1487,6 +1487,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 >
                                     <RefreshCw className="w-4 h-4" /> Refresh Data
                                 </button>
+                                <button
+                                    onClick={async () => {
+                                        try {
+                                            await dbService.syncRegistry();
+                                            window.location.reload();
+                                        } catch (e) {
+                                            alert("Sync failed. Did you run the SUPABASE_SYNC_FUNCTION.sql script?");
+                                        }
+                                    }}
+                                    className="flex items-center gap-2 bg-slate-800 text-white px-4 py-2 rounded shadow hover:bg-slate-700 text-xs font-bold uppercase tracking-wider"
+                                >
+                                    <Database className="w-4 h-4" /> Sync Registry
+                                </button>
                             </div>
                         </div>
                         <AdminStats users={users} onFilter={(s) => { setFilterStatus(s); setActiveView('REGISTRY'); }} />
