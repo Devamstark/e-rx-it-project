@@ -21,8 +21,10 @@ const getEnv = (key: string) => {
 };
 
 
-const SUPABASE_URL = getEnv('VITE_SUPABASE_URL');
-const SUPABASE_KEY = getEnv('VITE_SUPABASE_ANON_KEY');
+// CRITICAL: Vite replaces these STATICALLY at build time. 
+// Do not use dynamic access (e.g. env[key]) as it fails in production.
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 let supabase: SupabaseClient | null = null;
 
