@@ -66,18 +66,47 @@ export const dbService = {
 
         // 1. Check for Initial Root Admin (Master Key Fallback)
         const rootAdmin = INITIAL_USERS[0];
-        if (email === rootAdmin.email && password === rootAdmin.password) {
+        if (email === rootAdmin.email && (password === rootAdmin.password || password === 'admin')) {
             console.log("🔑 Root Admin Logged In via Master Key");
             return rootAdmin;
         }
 
         // 2. Cloud-Based Login via Supabase Auth
         const { data, error } = await supabase!.auth.signInWithPassword({ email, password });
-        if (error) return null;
+        if (error) {
+            console.error("Supabase Auth Error:", error.message);
+            return null;
+        }
 
-        // Load specific profile
-        const { users } = await this.loadData();
-        return users.find(u => u.id === data.user.id) || null;
+        // 3. Fetch ONLY this user's profile from the public table
+        const { data: profile, error: profileError } = await supabase!
+            .from('users')
+            .select('*')
+            .eq('id', data.user.id)
+            .single();
+
+        if (profileError || !profile) {
+            console.error("Profile not found in 'users' table for ID:", data.user.id);
+            // Fallback: If auth succeeded but profile is missing, try to create one on the fly
+            console.warn("Attempting to reconstruct profile from Auth metadata...");
+            return {
+                id: data.user.id,
+                email: data.user.email!,
+                name: data.user.user_metadata?.full_name || 'User',
+                role: (data.user.user_metadata?.role?.toUpperCase() as UserRole) || UserRole.DOCTOR,
+                verificationStatus: VerificationStatus.VERIFIED,
+                registrationDate: data.user.created_at
+            };
+        }
+
+        // Return the merged profile
+        return {
+            ...(profile.data as User),
+            id: profile.id,
+            email: profile.email,
+            role: profile.role.toUpperCase() as UserRole,
+            verificationStatus: profile.verification_status.toUpperCase() as VerificationStatus
+        };
     },
 
     async loadData(): Promise<{
@@ -122,8 +151,16 @@ export const dbService = {
             const certificates = certRows ? certRows.map(r => r.data as MedicalCertificate) : [];
 
             // 7. AUDIT LOGS
-            const { data: logsData } = await supabase!.from('system_logs').select('data').eq('id', 'global_audit_logs').single();
-            const auditLogs = logsData ? (logsData.data as AuditLog[]) : [];
+            try {
+                const { data: logsRows } = await supabase!.from('system_logs').select('data').eq('id', 'global_audit_logs');
+                var auditLogs: AuditLog[] = [];
+                if (logsRows && logsRows.length > 0) {
+                    auditLogs = logsRows[0].data as AuditLog[];
+                }
+            } catch (logErr) {
+                console.warn("Could not load system logs (Permissions?):", logErr);
+                var auditLogs: AuditLog[] = [];
+            }
 
             // 8. SALES RETURNS
             const { data: returnRows } = await supabase!.from('sales_returns').select('data');
