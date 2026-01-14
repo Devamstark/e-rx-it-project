@@ -125,91 +125,56 @@ function App() {
     // --- Initialization & Session Restore ---
     useEffect(() => {
         const init = async () => {
-            const { users, rx, patients: loadedPatients, auditLogs: loadedLogs, labReferrals: loadedLabs, appointments: loadedApts, certificates: loadedCerts, patientAccounts: loadedAccs } = await dbService.loadData();
-            setRegisteredUsers(users);
-            setPrescriptions(rx);
-            setPatients(loadedPatients);
-            setAuditLogs(loadedLogs);
-            setLabReferrals(loadedLabs);
-            setSalesReturns(dbService.getSalesReturns()); // Load returns
-            setAppointments(loadedApts);
-            setCertificates(loadedCerts);
-            setPatientAccounts(loadedAccs);
-
-            // Restore Session
             try {
-                const storedSessionId = localStorage.getItem('devx_active_session_id');
-                if (storedSessionId) {
-                    const validUser = users.find(u => u.id === storedSessionId);
-                    if (validUser) {
-                        if (validUser.verificationStatus === VerificationStatus.TERMINATED) {
-                            localStorage.removeItem('devx_active_session_id');
-                        } else {
-                            setCurrentUser(validUser);
-                            // Update activity ref on restore to prevent immediate timeout
-                            lastActivityRef.current = Date.now();
-                        }
-                    } else {
-                        localStorage.removeItem('devx_active_session_id');
-                    }
-                }
-            } catch (e) {
-                console.error("Session restore error:", e);
-            }
+                const {
+                    users, rx, patients: loadedPatients, auditLogs: loadedLogs,
+                    labReferrals: loadedLabs, appointments: loadedApts,
+                    certificates: loadedCerts, patientAccounts: loadedAccs,
+                    salesReturns: loadedReturns
+                } = await dbService.loadData();
 
-            setIsLoaded(true);
+                setRegisteredUsers(users);
+                setPrescriptions(rx);
+                setPatients(loadedPatients);
+                setAuditLogs(loadedLogs);
+                setLabReferrals(loadedLabs);
+                setSalesReturns(loadedReturns);
+                setAppointments(loadedApts);
+                setCertificates(loadedCerts);
+                setPatientAccounts(loadedAccs);
+
+                // Restore Session
+                try {
+                    const storedSessionId = localStorage.getItem('devx_active_session_id');
+                    if (storedSessionId) {
+                        const validUser = users.find(u => u.id === storedSessionId);
+                        if (validUser) {
+                            if (validUser.verificationStatus === VerificationStatus.TERMINATED) {
+                                localStorage.removeItem('devx_active_session_id');
+                            } else {
+                                setCurrentUser(validUser);
+                                // Update activity ref on restore to prevent immediate timeout
+                                lastActivityRef.current = Date.now();
+                            }
+                        } else {
+                            localStorage.removeItem('devx_active_session_id');
+                        }
+                    }
+                } catch (e) {
+                    console.error("Session restore error:", e);
+                }
+
+                setIsLoaded(true);
+            } catch (e) {
+                console.error("Initialization Failed:", e);
+                setIsLoaded(true); // Still set loaded to allow basic app function or error UI
+            }
         };
         init();
     }, []);
 
-    // --- Persistence Listeners ---
-    useEffect(() => {
-        if (isLoaded) {
-            dbService.saveUsers(registeredUsers);
-        }
-    }, [registeredUsers, isLoaded]);
-
-    useEffect(() => {
-        if (isLoaded) {
-            dbService.savePrescriptions(prescriptions);
-        }
-    }, [prescriptions, isLoaded]);
-
-    useEffect(() => {
-        if (isLoaded) {
-            dbService.savePatients(patients);
-        }
-    }, [patients, isLoaded]);
-
-    useEffect(() => {
-        if (isLoaded) {
-            dbService.saveSalesReturns(salesReturns);
-        }
-    }, [salesReturns, isLoaded]);
-
-    useEffect(() => {
-        if (isLoaded) {
-            dbService.saveLabReferrals(labReferrals);
-        }
-    }, [labReferrals, isLoaded]);
-
-    useEffect(() => {
-        if (isLoaded) {
-            dbService.saveAppointments(appointments);
-        }
-    }, [appointments, isLoaded]);
-
-    useEffect(() => {
-        if (isLoaded) {
-            dbService.saveCertificates(certificates);
-        }
-    }, [certificates, isLoaded]);
-
-    useEffect(() => {
-        if (isLoaded) {
-            dbService.savePatientAccounts(patientAccounts);
-        }
-    }, [patientAccounts, isLoaded]);
+    // --- Cloud-Only Architecture: Persistence listeners removed.
+    // Actions now perform explicit cloud updates to ensure 100% cloud reliability.
 
     // Sync currentUser state with registeredUsers updates
     useEffect(() => {
@@ -229,8 +194,10 @@ function App() {
 
     // --- Actions ---
 
-    const handleRegister = (newUser: User) => {
-        setRegisteredUsers(prev => [...prev, newUser]);
+    const handleRegister = async (newUser: User) => {
+        const updated = [...registeredUsers, newUser];
+        setRegisteredUsers(updated);
+        await dbService.saveUsers(updated);
         return true;
     };
 
@@ -264,14 +231,15 @@ function App() {
         }
     };
 
-    const handleUpdateUserStatus = (userId: string, newStatus: VerificationStatus) => {
-        setRegisteredUsers(prev =>
-            prev.map(u => u.id === userId ? { ...u, verificationStatus: newStatus } : u)
-        );
+    const handleUpdateUserStatus = async (userId: string, newStatus: VerificationStatus) => {
+        const updated = registeredUsers.map(u => u.id === userId ? { ...u, verificationStatus: newStatus } : u);
+        setRegisteredUsers(updated);
+        await dbService.saveUsers(updated);
     };
 
-    const handleUpdateUser = (updatedUser: User) => {
+    const handleUpdateUser = async (updatedUser: User) => {
         setRegisteredUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
+        await dbService.updateUser(updatedUser);
     };
 
     const handleTerminateUser = (userId: string, reason: string) => {
@@ -286,19 +254,20 @@ function App() {
         );
     };
 
-    const handleDeleteUser = (userId: string) => {
+    const handleDeleteUser = async (userId: string) => {
         setRegisteredUsers(prev => prev.filter(u => u.id !== userId));
+        await dbService.deleteUser(userId);
     };
 
-    const handleResetPassword = (userId: string) => {
+    const handleResetPassword = async (userId: string) => {
         const tempPassword = Math.random().toString(36).slice(-8);
-        setRegisteredUsers(prev =>
-            prev.map(u => u.id === userId ? { ...u, password: tempPassword, forcePasswordChange: true } : u)
-        );
+        const updated = registeredUsers.map(u => u.id === userId ? { ...u, password: tempPassword, forcePasswordChange: true } : u);
+        setRegisteredUsers(updated);
+        await dbService.saveUsers(updated);
         alert(`PASSWORD RESET SUCCESSFUL\n\nUser ID: ${userId}\nTemporary Password: ${tempPassword}\n\nPlease copy and share this password securely with the user.`);
     };
 
-    const handleCreatePrescription = (rxData: Prescription) => {
+    const handleCreatePrescription = async (rxData: Prescription) => {
         console.log("App: Creating Prescription...", rxData);
         const currentCount = prescriptions.length + 1;
         const sequentialId = currentCount.toString().padStart(9, '0');
@@ -317,12 +286,13 @@ function App() {
             id: sequentialId
         };
 
-        // Ensure we are adding to state, which triggers useEffect -> savePrescriptions
-        setPrescriptions(prev => [newRxWithId, ...prev]);
+        const updated = [newRxWithId, ...prescriptions];
+        setPrescriptions(updated);
+        await dbService.savePrescriptions(updated);
 
         // Log Security Action with Correct ID
         if (currentUser) {
-            dbService.logSecurityAction(
+            await dbService.logSecurityAction(
                 currentUser.id,
                 'RX_CREATED',
                 `Rx #${sequentialId} SENT_TO_PHARMACY (${newRxWithId.pharmacyName}) for ${newRxWithId.patientName}`
@@ -330,34 +300,40 @@ function App() {
         }
     };
 
-    const handleDispensePrescription = (rxId: string, patientId?: string) => {
-        setPrescriptions(prev =>
-            prev.map(rx => rx.id === rxId ? {
-                ...rx,
-                status: 'DISPENSED',
-                patientId: patientId || rx.patientId // Link patient if provided, otherwise keep existing
-            } : rx)
-        );
+    const handleDispensePrescription = async (rxId: string, patientId?: string) => {
+        const updated = prescriptions.map(rx => rx.id === rxId ? {
+            ...rx,
+            status: 'DISPENSED' as const,
+            patientId: patientId || rx.patientId
+        } : rx);
+        setPrescriptions(updated);
+        await dbService.savePrescriptions(updated);
     };
 
-    const handleRejectPrescription = (rxId: string, reason: string = 'REJECTED') => {
-        setPrescriptions(prev =>
-            prev.map(rx => rx.id === rxId ? { ...rx, status: reason as any } : rx)
-        );
+    const handleRejectPrescription = async (rxId: string, reason: string = 'REJECTED') => {
+        const updated = prescriptions.map(rx => rx.id === rxId ? { ...rx, status: reason as any } : rx);
+        setPrescriptions(updated);
+        await dbService.savePrescriptions(updated);
     };
 
-    const handleAddPatient = (patient: Patient) => {
-        setPatients(prev => [...prev, patient]);
+    const handleAddPatient = async (patient: Patient) => {
+        const updated = [...patients, patient];
+        setPatients(updated);
+        await dbService.savePatients(updated);
     };
 
-    const handleUpdatePatient = (updatedPatient: Patient) => {
-        setPatients(prev => prev.map(p => p.id === updatedPatient.id ? updatedPatient : p));
+    const handleUpdatePatient = async (updatedPatient: Patient) => {
+        const updated = patients.map(p => p.id === updatedPatient.id ? updatedPatient : p);
+        setPatients(updated);
+        await dbService.savePatients(updated);
     };
 
-    const handleAddLabReferral = (referral: LabReferral) => {
-        setLabReferrals(prev => [referral, ...prev]);
+    const handleAddLabReferral = async (referral: LabReferral) => {
+        const updated = [referral, ...labReferrals];
+        setLabReferrals(updated);
+        await dbService.saveLabReferrals(updated);
         if (currentUser) {
-            dbService.logSecurityAction(currentUser.id, 'LAB_REQ_INITIATED', `Referral created for ${referral.patientName} (${referral.testName})`);
+            await dbService.logSecurityAction(currentUser.id, 'LAB_REQ_INITIATED', `Referral created for ${referral.patientName} (${referral.testName})`);
         }
     };
 
@@ -370,18 +346,22 @@ function App() {
     };
 
     // Appointment Handlers with Logging
-    const handleAddAppointment = (apt: Appointment) => {
-        setAppointments(prev => [...prev, apt]);
+    const handleAddAppointment = async (apt: Appointment) => {
+        const updated = [...appointments, apt];
+        setAppointments(updated);
+        await dbService.saveAppointments(updated);
         if (currentUser) {
-            dbService.logSecurityAction(currentUser.id, 'APPOINTMENT_SCHEDULED', `Patient: ${apt.patientName} on ${apt.date}`);
+            await dbService.logSecurityAction(currentUser.id, 'APPOINTMENT_SCHEDULED', `Patient: ${apt.patientName} on ${apt.date}`);
         }
     };
 
-    const handleDeleteAppointment = (aptId: string) => {
+    const handleDeleteAppointment = async (aptId: string) => {
         const apt = appointments.find(a => a.id === aptId);
-        setAppointments(prev => prev.filter(a => a.id !== aptId));
+        const updated = appointments.filter(a => a.id !== aptId);
+        setAppointments(updated);
+        await dbService.saveAppointments(updated);
         if (currentUser && apt) {
-            dbService.logSecurityAction(currentUser.id, 'APPOINTMENT_DELETED', `Cancelled: ${apt.patientName} (${apt.date})`);
+            await dbService.logSecurityAction(currentUser.id, 'APPOINTMENT_DELETED', `Cancelled: ${apt.patientName} (${apt.date})`);
         }
     };
 

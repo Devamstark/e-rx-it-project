@@ -157,7 +157,6 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
                 id: authId!,
                 name: regName,
                 email: email,
-                password: password,
                 role: selectedRole,
                 verificationStatus: VerificationStatus.PENDING,
                 registrationDate: new Date().toISOString(),
@@ -194,33 +193,44 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
         setError('');
         setStatusMessage('');
 
-        // Local check (App Registry)
-        let user = users.find(u => u.email === email && u.password === password && u.role === selectedRole);
+        try {
+            // Refactored: Use Supabase Auth for verification instead of local password check
+            const user = await dbService.login(email, password);
 
-        if (user) {
-            // Check Status
-            if (user.verificationStatus === VerificationStatus.PENDING) {
-                setLoading(false);
-                setStatusMessage("Your account is currently Under Review by DevXWorld Admins. Please check back later.");
-                return;
-            }
-            if (user.verificationStatus === VerificationStatus.REJECTED) {
-                setLoading(false);
-                setError("Your application was Rejected. Access Denied.");
-                return;
-            }
-            if (user.verificationStatus === VerificationStatus.TERMINATED) {
-                setLoading(false);
-                setError("Your account has been Terminated due to compliance violations.");
-                return;
-            }
+            if (user) {
+                if (user.role !== selectedRole) {
+                    setLoading(false);
+                    setError(`Invalid Role. This account is registered as a ${user.role}.`);
+                    return;
+                }
 
-            // Proceed to OTP instantly for better UX
+                // Check Status
+                if (user.verificationStatus === VerificationStatus.PENDING) {
+                    setLoading(false);
+                    setStatusMessage("Your account is currently Under Review by DevXWorld Admins. Please check back later.");
+                    return;
+                }
+                if (user.verificationStatus === VerificationStatus.REJECTED) {
+                    setLoading(false);
+                    setError("Your application was Rejected. Access Denied.");
+                    return;
+                }
+                if (user.verificationStatus === VerificationStatus.TERMINATED) {
+                    setLoading(false);
+                    setError("Your account has been Terminated due to compliance violations.");
+                    return;
+                }
+
+                // Proceed to OTP instantly for better UX
+                setLoading(false);
+                setStep('OTP');
+            } else {
+                setLoading(false);
+                setError("Invalid Credentials. Please check your email and password.");
+            }
+        } catch (err: any) {
             setLoading(false);
-            setStep('OTP');
-        } else {
-            setLoading(false);
-            setError("Invalid Credentials or Role selection.");
+            setError(err.message || "Login failed. Please try again.");
         }
     };
 
