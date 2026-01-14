@@ -284,9 +284,15 @@ export const dbService = {
 
     async logSecurityAction(userId: string, action: string, details: string) {
         this.checkCloud();
+        // Friendly Name for Admin Logs
+        const actorLabel = (userId === 'e7569d98-4c84-4e57-8c2a-e58d5130981e' || details.includes('Admin')) ? 'System Admin' : userId;
+
         const log: AuditLog = {
             id: `LOG-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            actorId: userId, action, details, timestamp: new Date().toISOString()
+            actorId: actorLabel,
+            action,
+            details,
+            timestamp: new Date().toISOString()
         };
         const { data: existing } = await supabase!.from('system_logs').select('data').eq('id', 'global_audit_logs').single();
         const logs = existing ? (existing.data as AuditLog[]) : [];
