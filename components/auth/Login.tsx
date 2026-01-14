@@ -230,14 +230,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin, users, onRegister }) => {
         e.preventDefault();
         setLoading(true);
 
-        // 1. Check Admin Bypass
-        if (selectedRole === UserRole.ADMIN && otp === '000000') {
-            const admin = users.find(u => u.email === 'admin' || u.role === UserRole.ADMIN) || users[0];
-            if (admin) {
-                await onLogin(admin);
-                return;
-            }
-        }
+        // 1. Check Admin Bypass - REMOVED FOR SECURITY
 
         // 2. Validate OTP length
         if (otp.length !== 6) {

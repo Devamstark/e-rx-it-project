@@ -2,17 +2,8 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Prescription, User, InventoryItem, Supplier, Customer, Sale, SalesReturn, Expense, AuditLog, Appointment, LabReferral, MedicalCertificate, PrescriptionTemplate, UserRole, VerificationStatus, Patient, PatientAccount } from '../types';
 
 // --- Default Initial State ---
-const INITIAL_USERS: User[] = [
-    {
-        id: 'adm-root',
-        name: 'DevX Super Admin',
-        email: 'admin',
-        password: 'admin',
-        role: UserRole.ADMIN,
-        verificationStatus: VerificationStatus.VERIFIED,
-        registrationDate: new Date().toISOString()
-    }
-];
+// --- Default Initial State ---
+const INITIAL_USERS: User[] = [];
 
 const getEnv = (key: string) => {
     try {
@@ -25,11 +16,9 @@ const getEnv = (key: string) => {
     return undefined;
 };
 
-const FALLBACK_URL = 'https://xqhvjabpsiimxjpbhbih.supabase.co';
-const FALLBACK_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhxaHZqYWJwc2lpbXhqcGJoYmloIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2MzM3MTcsImV4cCI6MjA3OTIwOTcxN30._IUN318q5XbhV-VU8RAPTSuWh2NLqK2GK0P_Qzg9GuQ';
 
-const SUPABASE_URL = getEnv('VITE_SUPABASE_URL') || FALLBACK_URL;
-const SUPABASE_KEY = getEnv('VITE_SUPABASE_ANON_KEY') || FALLBACK_KEY;
+const SUPABASE_URL = getEnv('VITE_SUPABASE_URL');
+const SUPABASE_KEY = getEnv('VITE_SUPABASE_ANON_KEY');
 
 let supabase: SupabaseClient | null = null;
 
@@ -65,11 +54,8 @@ export const dbService = {
         this.checkCloud();
 
         // 1. Check for Initial Root Admin (Master Key Fallback)
-        const rootAdmin = INITIAL_USERS[0];
-        if (email === rootAdmin.email && (password === rootAdmin.password || password === 'admin')) {
-            console.log("🔑 Root Admin Logged In via Master Key");
-            return rootAdmin;
-        }
+        // 1. Check for Initial Root Admin (Master Key Fallback)
+        // REMOVED FOR SECURITY: Root admin must be created in Supabase Auth
 
         // 2. Cloud-Based Login via Supabase Auth
         const { data, error } = await supabase!.auth.signInWithPassword({ email, password });
@@ -181,6 +167,67 @@ export const dbService = {
             console.error("Load Data Error:", e);
             throw e;
         }
+    },
+
+    async getTemplates(doctorId: string): Promise<PrescriptionTemplate[]> {
+        this.checkCloud();
+        const { data } = await supabase!.from('prescription_templates').select('data').eq('doctor_id', doctorId);
+        return data ? data.map(r => r.data as PrescriptionTemplate) : [];
+    },
+
+    async saveTemplate(template: PrescriptionTemplate) {
+        this.checkCloud();
+        await supabase!.from('prescription_templates').upsert({
+            id: template.id,
+            doctor_id: template.doctorId,
+            data: template
+        });
+    },
+
+    getSuppliers(): Supplier[] {
+        // This is a stub for synchronous access if needed, 
+        // but it's better to use data from loadData()
+        console.warn("getSuppliers() called synchronously. Use loadData() for real-time data.");
+        return [];
+    },
+
+    getCustomers(): Customer[] {
+        console.warn("getCustomers() called synchronously. Use loadData() for real-time data.");
+        return [];
+    },
+
+    getSales(): Sale[] {
+        console.warn("getSales() called synchronously. Use loadData() for real-time data.");
+        return [];
+    },
+
+    getSalesReturns(): SalesReturn[] {
+        console.warn("getSalesReturns() called synchronously. Use loadData() for real-time data.");
+        return [];
+    },
+
+    getExpenses(): Expense[] {
+        console.warn("getExpenses() called synchronously. Use loadData() for real-time data.");
+        return [];
+    },
+
+    async getPatientAccount(patientId: string): Promise<PatientAccount | null> {
+        this.checkCloud();
+        const { data } = await supabase!
+            .from('patient_accounts')
+            .select('*')
+            .eq('patient_id', patientId)
+            .single();
+
+        if (!data) return null;
+        return {
+            id: data.id,
+            patientId: data.patient_id,
+            authUserId: data.auth_user_id,
+            status: data.status,
+            createdAt: data.created_at,
+            enabledByPharmacyId: data.enabled_by_pharmacy_id
+        };
     },
 
     async saveUsers(users: User[]) {

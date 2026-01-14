@@ -149,8 +149,7 @@ export const CreatePrescription: React.FC<CreatePrescriptionProps> = ({
 
     // Load Templates on Mount
     useEffect(() => {
-        const saved = dbService.getTemplates(currentUser.id);
-        setTemplates(saved);
+        dbService.getTemplates(currentUser.id).then(setTemplates);
     }, [currentUser.id]);
 
     const handleSelectPatient = (patient: Patient) => {
