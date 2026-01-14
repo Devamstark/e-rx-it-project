@@ -63,6 +63,15 @@ export const dbService = {
 
     async login(email: string, password: string): Promise<User | null> {
         this.checkCloud();
+
+        // 1. Check for Initial Root Admin (Master Key Fallback)
+        const rootAdmin = INITIAL_USERS[0];
+        if (email === rootAdmin.email && password === rootAdmin.password) {
+            console.log("🔑 Root Admin Logged In via Master Key");
+            return rootAdmin;
+        }
+
+        // 2. Cloud-Based Login via Supabase Auth
         const { data, error } = await supabase!.auth.signInWithPassword({ email, password });
         if (error) return null;
 
