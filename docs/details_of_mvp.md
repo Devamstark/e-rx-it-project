@@ -9,7 +9,7 @@
 ## 1. Executive Summary
 The **DevXWorld e-Rx Hub** is a cloud-native, legally compliant telemedicine and pharmacy ERP platform designed for the Indian healthcare ecosystem. It bridges the gap between Registered Medical Practitioners (RMPs) and Pharmacies while strictly adhering to the **DPDP Act 2023**, **IT Act 2000**, and **Telemedicine Practice Guidelines 2020**.
 
-This MVP delivers a complete "Clinic-to-Chemist" digital workflow with integrated AI safety checks, financial ledgers, and forensic auditing.
+This MVP delivers a complete "Clinic-to-Chemist" digital workflow with financial ledgers and forensic auditing.
 
 ---
 
@@ -22,7 +22,6 @@ This MVP delivers a complete "Clinic-to-Chemist" digital workflow with integrate
 *   **Database (Hybrid):**
     *   **Primary:** Supabase (PostgreSQL) for cloud synchronization.
     *   **Fallback:** LocalStorage for offline-first capability.
-*   **AI Engine:** Google Gemini API (`gemini-2.5-flash`) for clinical decision support.
 *   **Visualization:** Recharts for analytics.
 *   **Icons:** Lucide React.
 
@@ -50,8 +49,6 @@ This MVP delivers a complete "Clinic-to-Chemist" digital workflow with integrate
 *   **Patient Selection:** Smart search (Name/Phone) or "Create New Patient" workflow.
 *   **Telemedicine Compliance:** Mandatory checkbox certifying patient identity verification (Video/Audio).
 *   **Vitals Recording:** BP, Pulse, Temperature, SpO2, Weight.
-*   **Voice Dictation:** Integrated speech-to-text for Diagnosis and Advice fields.
-*   **Drug Interaction Check (AI):** Real-time analysis of prescribed medicines against the diagnosis using Gemini AI to flag contraindications.
 *   **Medicine Database:** Autocomplete with "Low Risk Generic List", filtering out Schedule X narcotics for safety.
 *   **Templates:** Save and load common prescriptions (e.g., "Viral Fever Protocol").
 *   **Pharmacy Selection:** Direct routing of Rx to verified pharmacies.
@@ -95,10 +92,6 @@ This MVP delivers a complete "Clinic-to-Chemist" digital workflow with integrate
 *   **Supplier Ledger:** Track amounts payable to distributors. Record payments made.
 *   **Customer Credit:** Track "Khata" (credit) for patients. Record partial payments and dues.
 *   **Sales Returns:** Process refunds or exchanges, automatically updating inventory and customer balance.
-
-### 4.5 AI Business Intelligence
-*   **Inventory Analysis:** Gemini AI analyzes sales vs. stock to suggest reordering.
-*   **Pricing Tips:** AI suggestions for discounting near-expiry items.
 
 ---
 

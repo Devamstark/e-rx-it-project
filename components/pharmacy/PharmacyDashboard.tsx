@@ -1,12 +1,12 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { CheckCircle, Package, Search, Users, ShoppingCart, Plus, Save, Trash2, Stethoscope, BarChart3, ScanBarcode, X, Activity, Calculator, FileText, Phone, MapPin, Edit2, AlertOctagon, Receipt, Truck, BookOpen, BrainCircuit, CreditCard, Filter, Building2, Printer, RotateCcw, AlertTriangle, UserPlus, UserCheck, ArrowRight, User, Wallet, ArrowLeft, Keyboard, PauseCircle, PlayCircle, AlertCircle, Tag, RefreshCw, Calendar, Clock, ChevronRight, Shield, Key } from 'lucide-react';
+import { CheckCircle, Package, Search, Users, ShoppingCart, Plus, Save, Trash2, Stethoscope, BarChart3, ScanBarcode, X, Activity, Calculator, FileText, Phone, MapPin, Edit2, AlertOctagon, Receipt, Truck, BookOpen, CreditCard, Filter, Building2, Printer, RotateCcw, AlertTriangle, UserPlus, UserCheck, ArrowRight, User, Wallet, ArrowLeft, Keyboard, PauseCircle, PlayCircle, AlertCircle, Tag, RefreshCw, Calendar, Clock, ChevronRight, Shield, Key } from 'lucide-react';
 import { Prescription, User as UserType, InventoryItem, DoctorDirectoryEntry, Patient, Supplier, Customer, Sale, SaleItem, GRN, Expense, SalesReturn, Medicine, PatientAccount, UserRole, VerificationStatus } from '../../types';
 import { PrescriptionModal } from '../doctor/PrescriptionModal';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts';
 import { QRCodeSVG } from 'qrcode.react';
 import { dbService } from '../../services/db';
-import { getPharmacyAIInsights } from '../../services/geminiService';
+
 import { VirtualNumpad } from '../ui/VirtualNumpad';
 
 interface PharmacyDashboardProps {
@@ -231,7 +231,7 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
     salesReturns = [],
     onAddSalesReturn
 }) => {
-    const [view, setView] = useState<'DASHBOARD' | 'ERX' | 'POS' | 'INVENTORY' | 'LEDGER' | 'REPORTS' | 'AI' | 'PATIENTS'>('DASHBOARD');
+    const [view, setView] = useState<'DASHBOARD' | 'ERX' | 'POS' | 'INVENTORY' | 'LEDGER' | 'REPORTS' | 'PATIENTS'>('DASHBOARD');
     const [erxTab, setErxTab] = useState<'QUEUE' | 'HISTORY'>('QUEUE');
     const [selectedRx, setSelectedRx] = useState<Prescription | null>(null);
 
@@ -600,9 +600,6 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
         alert("Stock written off.");
     };
 
-    const [aiInsights, setAiInsights] = useState<{ reorderSuggestions: any[], pricingTips: any[], anomalies: any[] } | null>(null);
-    const [loadingAi, setLoadingAi] = useState(false);
-    const fetchInsights = async () => { setLoadingAi(true); const insights = await getPharmacyAIInsights(inventory, sales); setAiInsights(insights); setLoadingAi(false); };
 
     // Helper to get detailed history for a customer
     const getCustomerDetailsFromRx = (customer: Customer) => {
@@ -635,7 +632,7 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
             </div>
 
             <div className="flex overflow-x-auto gap-2 mb-6 pb-2 w-full whitespace-nowrap -mx-4 px-4 sm:mx-0 sm:px-0">
-                {[{ id: 'DASHBOARD', label: 'Overview', icon: Activity }, { id: 'ERX', label: 'e-Prescriptions', icon: FileText }, { id: 'PATIENTS', label: 'Patients', icon: Users }, { id: 'POS', label: 'Billing / POS', icon: Calculator }, { id: 'INVENTORY', label: 'Stock & GRN', icon: Package }, { id: 'LEDGER', label: 'Ledger', icon: BookOpen }, { id: 'REPORTS', label: 'Reports', icon: BarChart3 }, { id: 'AI', label: 'AI Assistant', icon: BrainCircuit }].map(tab => (
+                {[{ id: 'DASHBOARD', label: 'Overview', icon: Activity }, { id: 'ERX', label: 'e-Prescriptions', icon: FileText }, { id: 'PATIENTS', label: 'Patients', icon: Users }, { id: 'POS', label: 'Billing / POS', icon: Calculator }, { id: 'INVENTORY', label: 'Stock & GRN', icon: Package }, { id: 'LEDGER', label: 'Ledger', icon: BookOpen }, { id: 'REPORTS', label: 'Reports', icon: BarChart3 }].map(tab => (
                     <button key={tab.id} onClick={() => { setView(tab.id as any); setViewingCustomer(null); }} className={`px-5 py-3 rounded-xl text-sm font-bold flex items-center whitespace-nowrap transition-all border shrink-0 ${view === tab.id ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-200' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-slate-300'}`}><tab.icon className="w-4 h-4 mr-2" /> {tab.label}</button>
                 ))}
             </div>
@@ -1255,63 +1252,6 @@ export const PharmacyDashboard: React.FC<PharmacyDashboardProps> = ({
                         </table>
                         {inventory.length === 0 && <p className="text-center text-slate-400 py-8">Inventory empty. Add products to get started.</p>}
                     </div>
-                </div>
-            )}
-
-            {/* AI VIEW */}
-            {view === 'AI' && (
-                <div className="animate-in fade-in">
-                    <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-6 rounded-xl shadow-lg mb-6">
-                        <div className="flex justify-between items-center">
-                            <div>
-                                <h2 className="text-2xl font-bold flex items-center"><BrainCircuit className="w-8 h-8 mr-3" /> Pharmacy AI Assistant</h2>
-                                <p className="text-indigo-100 mt-1">Smart insights on inventory, pricing, and sales trends.</p>
-                            </div>
-                            <button
-                                onClick={fetchInsights}
-                                disabled={loadingAi}
-                                className="bg-white text-indigo-600 px-6 py-3 rounded-lg font-bold shadow hover:bg-indigo-50 disabled:opacity-70 flex items-center"
-                            >
-                                {loadingAi ? <RefreshCw className="w-5 h-5 animate-spin mr-2" /> : <PlayCircle className="w-5 h-5 mr-2" />}
-                                Analyze Data
-                            </button>
-                        </div>
-                    </div>
-
-                    {aiInsights && (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                                <h3 className="font-bold text-slate-800 mb-4 flex items-center"><AlertTriangle className="w-5 h-5 mr-2 text-amber-500" /> Reorder Suggestions</h3>
-                                <ul className="space-y-3">
-                                    {aiInsights.reorderSuggestions.map((s, i) => (
-                                        <li key={i} className="text-sm bg-amber-50 p-3 rounded border border-amber-100">
-                                            <p className="font-bold text-amber-800">{s.itemName}</p>
-                                            <p className="text-amber-700 text-xs">{s.reason}</p>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                                <h3 className="font-bold text-slate-800 mb-4 flex items-center"><Tag className="w-5 h-5 mr-2 text-green-500" /> Pricing Strategies</h3>
-                                <ul className="space-y-3">
-                                    {aiInsights.pricingTips.map((s, i) => (
-                                        <li key={i} className="text-sm bg-green-50 p-3 rounded border border-green-100">
-                                            <p className="font-bold text-green-800">{s.itemName}</p>
-                                            <p className="text-green-700 text-xs">{s.tip}</p>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                                <h3 className="font-bold text-slate-800 mb-4 flex items-center"><AlertCircle className="w-5 h-5 mr-2 text-red-500" /> Anomalies Detected</h3>
-                                {aiInsights.anomalies.length > 0 ? (
-                                    <ul className="space-y-2">
-                                        {aiInsights.anomalies.map((a, i) => <li key={i} className="text-sm text-red-600">• {a}</li>)}
-                                    </ul>
-                                ) : <p className="text-sm text-slate-400 italic">No major anomalies found.</p>}
-                            </div>
-                        </div>
-                    )}
                 </div>
             )}
 

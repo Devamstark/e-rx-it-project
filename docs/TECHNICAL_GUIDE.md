@@ -16,7 +16,6 @@ The DevXWorld e-Rx Hub is a secure, legally compliant e-prescription portal desi
 *   **Language:** TypeScript (Strict typing).
 *   **Styling:** Tailwind CSS (Utility-first).
 *   **Database & Auth:** Supabase (PostgreSQL, GoTrue, Storage).
-*   **AI Engine:** Google Gemini API (v1.30.0 via `@google/genai`) - Used for drug interaction checks.
 *   **Visualization:** Recharts (Admin analytics).
 *   **Icons:** Lucide React.
 *   **Build Tooling:** Vite (implied by usage patterns).
@@ -29,7 +28,6 @@ The DevXWorld e-Rx Hub is a secure, legally compliant e-prescription portal desi
 *   **Node.js:** v18.0.0 or higher.
 *   **npm/yarn:** Latest version.
 *   **Supabase Project:** A standard Supabase project with `users`, `prescriptions`, `patients`, `audit_logs` tables.
-*   **Google AI Studio Key:** An API key with access to `gemini-2.5-flash`.
 
 ### Local Installation
 1.  **Clone the Repository:**
@@ -53,7 +51,6 @@ The DevXWorld e-Rx Hub is a secure, legally compliant e-prescription portal desi
     ```env
     VITE_SUPABASE_URL=your_supabase_project_url
     VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-    API_KEY=your_google_gemini_api_key
     ```
 
 5.  **Run Development Server:**
@@ -81,7 +78,6 @@ The DevXWorld e-Rx Hub is a secure, legally compliant e-prescription portal desi
     *   `ui/`: Shared components (`Layout`, `PrintLayout`).
 *   `services/`: External API integrations.
     *   `db.ts`: Abstracted database layer handling Supabase and LocalStorage fallback.
-    *   `geminiService.ts`: AI interaction logic for drug safety checks.
 *   `types.ts`: TypeScript interfaces for `User`, `Prescription`, `Patient`, `AuditLog`.
 *   `constants.ts`: Static data (`LOW_RISK_GENERIC_LIST`, `INDIAN_STATES`) and Regex patterns.
 
@@ -89,8 +85,6 @@ The DevXWorld e-Rx Hub is a secure, legally compliant e-prescription portal desi
 *   **`services/db.ts`**:
     *   `loadData()`: Fetches initial state. Implements a robust merge strategy between SQL tables and Blob storage for audit logs.
     *   `logSecurityAction(actorId, action, details)`: Critical function for forensic logging. Tries SQL insert first, falls back to JSON blob if permissions fail.
-*   **`services/geminiService.ts`**:
-    *   `analyzePrescriptionSafety()`: Sends diagnosis and medicine list to Gemini 2.5 Flash to check for interactions and contraindications. Returns JSON.
 
 ### Data Models
 *   **User:** Handles Doctors, Pharmacies, and Admins. Differentiated by `role` enum. Contains `verificationStatus`.
