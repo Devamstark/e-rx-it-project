@@ -29,6 +29,12 @@ if (SUPABASE_URL && SUPABASE_KEY) {
     } catch (e) {
         console.warn("❌ DevXWorld: Supabase Connection Failed", e);
     }
+} else {
+    console.error("❌ DevXWorld: Supabase Credentials Missing in Environment!", {
+        url: !!SUPABASE_URL,
+        key: !!SUPABASE_KEY,
+        envCheck: getEnv('VITE_SUPABASE_URL')
+    });
 }
 
 // --- DB Service API (100% Cloud-Only Version) ---
