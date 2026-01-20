@@ -143,20 +143,32 @@ function App() {
                 setCertificates(loadedCerts);
                 setPatientAccounts(loadedAccs);
 
-                // Restore Session
+                // Restore Session with Robust Fallback
                 try {
                     const storedSessionId = localStorage.getItem('devx_active_session_id');
                     if (storedSessionId) {
-                        const validUser = users.find(u => u.id === storedSessionId);
+                        let validUser = users.find(u => u.id === storedSessionId);
+
+                        // Fallback: If not in public list, try fetching specifically (handles missing public row case)
+                        if (!validUser) {
+                            const recoveredUser = await dbService.getUser(storedSessionId);
+                            if (recoveredUser) {
+                                validUser = recoveredUser;
+                                // Optionally add to local list so UI doesn't break
+                                setRegisteredUsers(prev => [...prev, recoveredUser]);
+                            }
+                        }
+
                         if (validUser) {
                             if (validUser.verificationStatus === VerificationStatus.TERMINATED) {
                                 localStorage.removeItem('devx_active_session_id');
                             } else {
+                                console.log("Session Restored for:", validUser.email);
                                 setCurrentUser(validUser);
-                                // Update activity ref on restore to prevent immediate timeout
                                 lastActivityRef.current = Date.now();
                             }
                         } else {
+                            console.warn("Session invalid: User not found.");
                             localStorage.removeItem('devx_active_session_id');
                         }
                     }
@@ -367,20 +379,38 @@ function App() {
 
     const handleLogin = async (user: User) => {
         // 1. Immediate UI Transition
-        // The user is already authenticated by the Login component
         setCurrentUser(user);
         localStorage.setItem('devx_active_session_id', user.id);
         lastActivityRef.current = Date.now();
 
+        // 2. Log the Login Event (AWAIT THIS so it's in DB before we fetch)
+        try {
+            console.log("📝 Logging login event...");
+            await dbService.logSecurityAction(user.id, 'LOGIN', `User Logged In (${user.role})`);
+        } catch (e) {
+            console.warn("Login logging failed non-fatally");
+        }
+
         // 3. Background Data Refresh
-        // We catch the data in background; dashboards have their own effects but this keeps global sync
-        dbService.loadData().then(({ auditLogs: freshLogs, patients: freshPatients, rx: freshRx, appointments: freshApts, patientAccounts: freshAccs }) => {
-            setAuditLogs(freshLogs);
+        try {
+            const { users, auditLogs: freshLogs, patients: freshPatients, rx: freshRx, appointments: freshApts, patientAccounts: freshAccs } = await dbService.loadData();
+
+            // CRITICAL: Update global lists so Admin Dashboard sees the new users
+            setRegisteredUsers(users);
+            setAuditLogs(freshLogs); // Now this should include the log we just wrote
             if (freshPatients.length > 0) setPatients(freshPatients);
             if (freshRx.length > 0) setPrescriptions(freshRx);
             if (freshApts.length > 0) setAppointments(freshApts);
             if (freshAccs && freshAccs.length > 0) setPatientAccounts(freshAccs);
-        }).catch(err => console.error("Background sync failed:", err));
+
+            // 4. Re-Sync Current User if needed
+            const freshMe = users.find(u => u.id === user.id);
+            if (freshMe) {
+                setCurrentUser(freshMe);
+            }
+        } catch (err) {
+            console.error("Background sync failed:", err);
+        }
     };
 
     const handleDoctorVerificationComplete = (profile: DoctorProfile) => {

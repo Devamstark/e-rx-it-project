@@ -358,7 +358,7 @@ const SecurityLogView = ({ logs, users }: { logs: AuditLog[], users: User[] }) =
     }, [users]);
 
     const getUserInfo = (actorId: string) => {
-        return userMap.get(actorId) || { name: actorId, role: 'UNKNOWN' };
+        return userMap.get(actorId) || { name: `Unknown (${actorId.slice(0, 8)}...)`, role: 'Unknown/Deleted' };
     };
 
     // Filter logs based on active tab and search term
