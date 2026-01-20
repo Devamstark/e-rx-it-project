@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect, useCallback, useRef, Suspense, lazy } from 'react';
-import { Layout } from './components/ui/Layout';
+import { AppShell } from './components/ui/AppShell';
 import { Login } from './components/auth/Login';
 import { RxVerification } from './components/public/RxVerification';
 import { LabReportUpload } from './components/public/LabReportUpload';
@@ -420,8 +419,12 @@ function App() {
     }
 
     return (
-        <>
-            <Layout user={currentUser} onLogout={handleLogout} onOpenDocs={() => setShowDocs(true)}>
+        <React.Fragment>
+            <AppShell
+                user={currentUser}
+                onLogout={handleLogout}
+                onNavigate={(view) => console.log("Navigate", view)}
+            >
                 {!currentUser ? (
                     <Login
                         onLogin={handleLogin}
@@ -487,7 +490,7 @@ function App() {
                         </Suspense>
                     </div>
                 )}
-            </Layout>
+            </AppShell>
 
             {/* Documentation Overlay */}
             {showDocs && (
@@ -511,7 +514,7 @@ function App() {
                     </div>
                 </div>
             )}
-        </>
+        </React.Fragment>
     );
 }
 
