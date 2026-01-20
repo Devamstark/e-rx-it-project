@@ -1,99 +1,45 @@
 @import "tailwindcss";
 
-/* Material 3 Inspired Design Tokens */
-@theme {
-    /* Colors - Indigo/Violet Theme (Deepmind/Google Style) */
-    --color-primary: #6366f1;
-    /* Indigo 500 */
-    --color-on-primary: #ffffff;
-    --color-primary-container: #e0e7ff;
-    /* Indigo 100 */
-    --color-on-primary-container: #312e81;
-    /* Indigo 900 */
-
-    --color-secondary: #64748b;
-    /* Slate 500 */
-    --color-on-secondary: #ffffff;
-    --color-secondary-container: #f1f5f9;
-    /* Slate 100 */
-    --color-on-secondary-container: #0f172a;
-    /* Slate 900 */
-
-    --color-surface: #f8fafc;
-    /* Slate 50 */
-    --color-on-surface: #1e293b;
-    /* Slate 800 */
-    --color-surface-container-low: #ffffff;
-    --color-surface-container: #f1f5f9;
-    /* Slate 100 */
-    --color-surface-container-high: #e2e8f0;
-    /* Slate 200 */
-
-    --color-error: #ef4444;
-    /* Red 500 */
-    --color-on-error: #ffffff;
-
-    /* Typography */
-    --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-
-    /* Animation */
-    --ease-spring: cubic-bezier(0.4, 0.0, 0.2, 1);
-}
-
+/* Core Design System & Global Styles */
 @layer base {
-    body {
-        background-color: var(--color-surface);
-        color: var(--color-on-surface);
-        font-family: var(--font-sans);
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
+    html {
+        scroll-behavior: smooth;
     }
 
-    /* Global Reset for better focus states */
-    :focus-visible {
-        outline: 2px solid var(--color-primary);
-        outline-offset: 2px;
+    body {
+        font-family: 'Inter', sans-serif;
+        background-color: #f8fafc;
+        color: #1e293b;
+    }
+
+    /* Ensure buttons and interactive elements always have pointer cursor */
+    button,
+    [role="button"],
+    a {
+        cursor: pointer;
+    }
+
+    /* Default transitions for premium feel */
+    button,
+    a,
+    input,
+    select,
+    textarea {
+        transition: all 0.2s ease;
     }
 }
 
+/* Premium Components & Micro-animations */
 @layer components {
 
-    /* M3 Elevation / Shadows */
-    .elevation-1 {
-        box-shadow: 0px 1px 3px 0px rgba(0, 0, 0, 0.1), 0px 1px 2px -1px rgba(0, 0, 0, 0.1);
-    }
-
-    .elevation-2 {
-        box-shadow: 0px 4px 6px -1px rgba(0, 0, 0, 0.1), 0px 2px 4px -2px rgba(0, 0, 0, 0.1);
-    }
-
-    .elevation-3 {
-        box-shadow: 0px 10px 15px -3px rgba(0, 0, 0, 0.1), 0px 4px 6px -4px rgba(0, 0, 0, 0.1);
-    }
-
-    /* Material 3 Card Pattern */
-    .m3-card {
-        background-color: var(--color-surface-container-low);
-        border-radius: 12px;
-        border: 1px solid var(--color-surface-container-high);
-        transition: all 0.2s var(--ease-spring);
-    }
-
-    .m3-card:hover {
-        background-color: #ffffff;
-        border-color: var(--color-primary-container);
-        box-shadow: 0px 4px 6px -1px rgba(0, 0, 0, 0.1), 0px 2px 4px -2px rgba(0, 0, 0, 0.1);
-        transform: translateY(-1px);
-    }
-
-    /* Glassmorphism Panel (Stitch Special) */
+    /* Glassmorphism utility */
     .glass-panel {
-        background: rgba(255, 255, 255, 0.8);
+        background: rgba(255, 255, 255, 0.7);
         backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.3);
     }
 
-    /* Scrollbar Styling */
+    /* Custom scrollbars */
     ::-webkit-scrollbar {
         width: 6px;
         height: 6px;
@@ -111,9 +57,19 @@
     ::-webkit-scrollbar-thumb:hover {
         background: #94a3b8;
     }
+
+    /* Slowness fix: prevent layout shifts */
+    .no-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+
+    .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
 }
 
-/* Animations */
+/* Dynamic Animations */
 @keyframes fadeIn {
     from {
         opacity: 0;
@@ -128,4 +84,14 @@
 
 .animate-fade-in {
     animation: fadeIn 0.4s ease-out forwards;
+}
+
+/* Hover Effects */
+.hover-lift {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.1);
 }
