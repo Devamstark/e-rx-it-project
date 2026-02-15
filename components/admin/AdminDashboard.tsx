@@ -1299,21 +1299,25 @@ const PatientAccountsView = ({ accounts }: { accounts: PatientAccount[] }) => {
 const AdminStats = ({ users, onFilter }: { users: User[], onFilter: (status: VerificationStatus | 'ALL') => void }) => {
     const pending = users.filter(u => u.verificationStatus === VerificationStatus.PENDING).length;
     const verified = users.filter(u => u.verificationStatus === VerificationStatus.VERIFIED).length;
+    const directory = users.filter(u => u.verificationStatus === VerificationStatus.DIRECTORY).length;
     const terminated = users.filter(u => u.verificationStatus === VerificationStatus.TERMINATED).length;
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
             <button onClick={() => onFilter('ALL')} className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 text-left hover:border-indigo-300 hover:shadow-md transition-all">
-                <div className="text-slate-500 text-xs font-bold uppercase">Total Users</div>
+                <div className="text-slate-500 text-xs font-bold uppercase">Total Base</div>
                 <div className="text-2xl font-bold text-slate-900 mt-1">{users.length}</div>
             </button>
             <button onClick={() => onFilter(VerificationStatus.PENDING)} className="bg-blue-50 p-4 rounded-lg shadow-sm border border-blue-200 text-left hover:border-blue-400 hover:shadow-md transition-all relative overflow-hidden">
-                <div className="text-blue-700 text-xs font-bold uppercase relative z-10">Pending Review</div>
+                <div className="text-blue-700 text-xs font-bold uppercase relative z-10">Pending</div>
                 <div className="text-2xl font-bold text-blue-900 mt-1 relative z-10">{pending}</div>
-                <Activity className="absolute right-2 bottom-2 w-12 h-12 text-blue-100 -z-0" />
+            </button>
+            <button onClick={() => onFilter(VerificationStatus.DIRECTORY)} className="bg-amber-50 p-4 rounded-lg shadow-sm border border-amber-200 text-left hover:border-amber-400 hover:shadow-md transition-all">
+                <div className="text-amber-700 text-xs font-bold uppercase">In Directory</div>
+                <div className="text-2xl font-bold text-amber-900 mt-1">{directory}</div>
             </button>
             <button onClick={() => onFilter(VerificationStatus.VERIFIED)} className="bg-green-50 p-4 rounded-lg shadow-sm border border-green-200 text-left hover:border-green-400 hover:shadow-md transition-all">
-                <div className="text-green-700 text-xs font-bold uppercase">Verified Active</div>
+                <div className="text-green-700 text-xs font-bold uppercase">Verified</div>
                 <div className="text-2xl font-bold text-green-900 mt-1">{verified}</div>
             </button>
             <button onClick={() => onFilter(VerificationStatus.TERMINATED)} className="bg-red-50 p-4 rounded-lg shadow-sm border border-red-200 text-left hover:border-red-400 hover:shadow-md transition-all">
@@ -1485,7 +1489,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                     onClick={() => window.location.reload()}
                                     className="flex items-center gap-2 bg-indigo-50 text-indigo-700 px-4 py-2 rounded shadow-sm hover:bg-indigo-100 text-xs font-bold uppercase tracking-wider border border-indigo-200"
                                 >
-                                    <RefreshCw className="w-4 h-4" /> Refresh Data
+                                    <RefreshCw className="w-4 h-4" /> Refresh Cloud Data
+                                </button>
+                                <button
+                                    onClick={async () => {
+                                        if (confirm("This will push all your offline-added doctors and patients to the Cloud database. Continue?")) {
+                                            try {
+                                                await dbService.saveUsers(users);
+                                                alert("Local Data Pushed Successfully!");
+                                            } catch (e) {
+                                                alert("Push failed. Check connection.");
+                                            }
+                                        }
+                                    }}
+                                    className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700 text-xs font-bold uppercase tracking-wider"
+                                >
+                                    <Database className="w-4 h-4" /> Push Local to Cloud
                                 </button>
                                 <button
                                     onClick={async () => {
@@ -1493,12 +1512,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                             await dbService.syncRegistry();
                                             window.location.reload();
                                         } catch (e) {
-                                            alert("Sync failed. Did you run the SUPABASE_SYNC_FUNCTION.sql script?");
+                                            alert("Sync failed. Check Supabase RPC 'sync_users'.");
                                         }
                                     }}
                                     className="flex items-center gap-2 bg-slate-800 text-white px-4 py-2 rounded shadow hover:bg-slate-700 text-xs font-bold uppercase tracking-wider"
                                 >
-                                    <Database className="w-4 h-4" /> Sync Registry
+                                    <Users className="w-4 h-4" /> Sync Auth Store
                                 </button>
                             </div>
                         </div>

@@ -85,7 +85,6 @@ export interface DoctorDirectoryEntry {
 
 export interface Patient {
   id: string;
-  doctorId: string;
   fullName: string;
   dateOfBirth: string;
   gender: 'Male' | 'Female' | 'Other';
@@ -113,6 +112,7 @@ export interface Patient {
 
   notes?: string;
   registeredAt: string;
+  doctorId?: string; // Optional indicator of who created the record
 }
 
 export interface User {
@@ -357,10 +357,10 @@ export interface SaleItem {
 
 export interface Sale {
   id: string;
-  pharmacyId: string; // Already exists
+  pharmacyId: string;
+  patientId: string; // Universal Patient ID
   invoiceNumber: string;
   date: string;
-  customerId?: string;
   customerName?: string;
   items: SaleItem[];
   subTotal: number;

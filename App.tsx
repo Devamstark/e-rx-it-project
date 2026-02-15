@@ -126,6 +126,15 @@ function App() {
     useEffect(() => {
         const init = async () => {
             try {
+                // --- SENSEFUL CACHE RESTORE (Immediate UI) ---
+                const cachedUsers = localStorage.getItem('devx_cache_users');
+                const cachedRx = localStorage.getItem('devx_cache_rx');
+                const cachedPatients = localStorage.getItem('devx_cache_patients');
+                if (cachedUsers) setRegisteredUsers(JSON.parse(cachedUsers));
+                if (cachedRx) setPrescriptions(JSON.parse(cachedRx));
+                if (cachedPatients) setPatients(JSON.parse(cachedPatients));
+
+                // Restoring critical data for session check
                 const {
                     users, rx, patients: loadedPatients, auditLogs: loadedLogs,
                     labReferrals: loadedLabs, appointments: loadedApts,
@@ -142,6 +151,11 @@ function App() {
                 setAppointments(loadedApts);
                 setCertificates(loadedCerts);
                 setPatientAccounts(loadedAccs);
+
+                // Update Cache in background
+                localStorage.setItem('devx_cache_users', JSON.stringify(users.slice(0, 50)));
+                localStorage.setItem('devx_cache_rx', JSON.stringify(rx.slice(0, 50)));
+                localStorage.setItem('devx_cache_patients', JSON.stringify(loadedPatients.slice(0, 50)));
 
                 // Restore Session with Robust Fallback
                 try {
